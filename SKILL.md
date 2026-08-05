@@ -4,7 +4,7 @@ description: >
   台灣 Hermes Agent 通用基線設定。一讀即可檢查或套用：雙 profile（主 default、副 side）、
   共用技能庫、兩個 Telegram bot、台灣時區與繁中、AnySearch 匿名搜尋、主模型訂閱＋OpenRouter
   備援（僅 Hermes 用量前 10）、開機自啟、禁休眠可關螢幕、Chrome DevTools MCP、核心行為 SOUL、
-  Telegram 指令選單與系統訊息繁中。適用 macOS／Windows／Linux。非公司內部專用。
+  Telegram 指令選單與系統訊息繁中。適用 macOS／Windows／Linux。
   觸發：台灣 Hermes 設定、雙 bot、基線安裝、繁中選單、開機自啟、通用設定技能。
 ---
 
@@ -12,14 +12,13 @@ description: >
 
 ## 這是什麼
 
-給**一般台灣使用者**的 Hermes 基線。讀了本技能後，agent 應能：
+台灣在地化的 **Hermes Agent 基線技能**：可檢查、可套用、可重現。讀了本技能後，agent 應能：
 
-1. **check**：報告缺什麼  
-2. **apply**：安全補齊（可重跑）  
-3. 回報：已就緒／已補上／需你手動  
+1. **check**：稽核基線並對未通過項給出修復指令  
+2. **apply**：冪等套用設定與預裝能力  
+3. **回報**：已就緒／已補上／需部署端完成（憑證、OAuth、雙 bot 等）  
 
-**不是**某公司內部包。禁止寫入特定公司名、職稱、內部共識路徑。
-
+本技能不承載帳號或金鑰；不寫入部署端專屬組織名稱或個案技能路徑。
 ## 鎖定決策（2026-08-05）
 
 | 項目 | 決定 |
@@ -379,7 +378,8 @@ apply 會：
 - 官方：`hermes model`、`hermes fallback`、`hermes profile`、`hermes mcp`、`hermes tools`  
 - Superpowers 來源範例：https://github.com/obra/superpowers  
 
-## 十一、公開與隱私
+## 十一、發佈與安全
 
-- 本技能可公開於 GitHub；**禁止**提交 `.env`、token、公司名、客戶 skill  
 - 倉庫：https://github.com/s94084sammy/hermes-tw-setup  
+- 版本庫不得包含 `.env`、token 或私人部署設定  
+- 金鑰僅寫入本機 Hermes 環境；對話中勿完整揭露密鑰  
