@@ -11,3 +11,6 @@
 - OpenRouter／Agnes 的 API key：agent 用**已 Google 登入**的 Chrome（CDP）自取並寫入 .env；不處理 Telegram bot 自動申請。
 - 取 OpenRouter／Agnes key：只准 attach 使用者已登入 Chrome（CDP）；禁止陌生／無痕瀏覽器；Chrome/CDP 限制要克服見 API_KEYS_BROWSER.md。
 - 預裝 Superpowers 技能包；強化記憶預設 holographic（本機 SQLite）。不強制裁剪 skill。
+- Telegram：`telegram.extra.rich_messages: true`（富訊息）；結構化內容**表格優先**（GFM pipe table，表前空行）。見 TELEGRAM_RICH.md。
+- 交付後習慣與使用者確認是否符合需求，不符就改到對齊為止。
+- 檔案交付前：派**獨立 subagent 做純視覺 QA**（看圖，不是規定檔案要由 subagent 產出）。見 DELIVERY_QA.md。

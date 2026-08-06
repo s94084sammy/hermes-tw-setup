@@ -1104,6 +1104,117 @@ def ensure_memory_boost(home: Path) -> list[str]:
     return notes
 
 
+
+def telegram_rich_enabled(cfg: dict) -> bool:
+    """True if rich_messages is on under telegram.extra or gateway.platforms.telegram.extra."""
+    def dig_extra(root: Any) -> bool:
+        if not isinstance(root, dict):
+            return False
+        extra = root.get("extra")
+        if isinstance(extra, dict) and extra.get("rich_messages") is True:
+            return True
+        if root.get("rich_messages") is True:
+            return True
+        return False
+
+    tg = cfg.get("telegram")
+    if dig_extra(tg if isinstance(tg, dict) else {}):
+        return True
+    gw = cfg.get("gateway") if isinstance(cfg.get("gateway"), dict) else {}
+    plats = gw.get("platforms") if isinstance(gw.get("platforms"), dict) else {}
+    ptg = plats.get("telegram") if isinstance(plats.get("telegram"), dict) else {}
+    if dig_extra(ptg):
+        return True
+    plats2 = cfg.get("platforms") if isinstance(cfg.get("platforms"), dict) else {}
+    ptg2 = plats2.get("telegram") if isinstance(plats2.get("telegram"), dict) else {}
+    return dig_extra(ptg2)
+
+
+def ensure_telegram_rich(home: Path) -> list[str]:
+    """Opt in Telegram Bot API rich messages (tables native)."""
+    notes: list[str] = []
+    cfg_path = home / "config.yaml"
+    if not cfg_path.exists():
+        return ["無 config.yaml"]
+    cfg = load_yaml(cfg_path)
+    changed = False
+    tg = cfg.get("telegram")
+    if not isinstance(tg, dict):
+        tg = {}
+        cfg["telegram"] = tg
+    extra = tg.get("extra")
+    if not isinstance(extra, dict):
+        extra = {}
+        tg["extra"] = extra
+    if extra.get("rich_messages") is not True:
+        extra["rich_messages"] = True
+        changed = True
+        notes.append("telegram.extra.rich_messages → true（富訊息／表格原生）")
+    else:
+        notes.append("telegram.extra.rich_messages 已是 true")
+    if changed:
+        bak = cfg_path.with_suffix(cfg_path.suffix + ".bak-hermes-tw-rich")
+        if not bak.exists():
+            shutil.copy2(cfg_path, bak)
+        write_yaml(cfg_path, cfg)
+        notes.append("已寫入 Telegram rich_messages（重啟 gateway 後生效）")
+    return notes
+
+
+def check_telegram_rich(home: Path, label: str = "default") -> list[Item]:
+    cfg = load_yaml(home / "config.yaml") if (home / "config.yaml").exists() else {}
+    ok = telegram_rich_enabled(cfg)
+    return [
+        Item(
+            id=f"{label}.telegram.rich_messages",
+            title=f"{label} Telegram 富訊息 rich_messages",
+            ok=ok,
+            detail="telegram.extra.rich_messages=true" if ok else "未開啟；apply 會設 true，需重啟 gateway",
+            fixable=True,
+        )
+    ]
+
+
+def ensure_behavior_snippets(home: Path) -> list[str]:
+    """Append new SOUL/MEMORY rules if core already present (idempotent needles)."""
+    notes: list[str] = []
+    soul = home / "SOUL.md"
+    mem_path = home / "memories" / "MEMORY.md"
+    full = (REF / "SOUL-TW.md").read_text(encoding="utf-8")
+    soul_text = soul.read_text(encoding="utf-8", errors="replace") if soul.exists() else ""
+    for title, needle in [
+        ("## Telegram 富訊息（表格優先）", "Telegram 富訊息"),
+        ("## 交付確認（與使用者對齊）", "交付確認"),
+        ("## 檔案交付前：subagent 純視覺 QA", "純視覺 QA"),
+    ]:
+        if needle in soul_text:
+            notes.append(f"SOUL 已有：{needle}")
+            continue
+        if title not in full:
+            continue
+        start = full.index(title)
+        rest = full[start + len(title) :]
+        m = re.search(r"\n## ", rest)
+        section = full[start:] if not m else full[start : start + len(title) + m.start()]
+        append_unique(soul, "\n" + section.strip() + "\n", needle)
+        notes.append(f"SOUL 已追加：{needle}")
+        soul_text = soul.read_text(encoding="utf-8", errors="replace") if soul.exists() else soul_text
+    mem_text = mem_path.read_text(encoding="utf-8", errors="replace") if mem_path.exists() else ""
+    for bullet in [
+        "Telegram：`telegram.extra.rich_messages: true`",
+        "檔案交付前：派**獨立 subagent 做純視覺 QA**",
+        "交付後習慣與使用者確認是否符合需求",
+    ]:
+        short = bullet[:24]
+        if short in mem_text or bullet in mem_text:
+            notes.append(f"MEMORY 已有：{short}…")
+            continue
+        append_unique(mem_path, "- " + bullet.lstrip("- ").strip(), short)
+        notes.append(f"MEMORY 已追加：{short}…")
+        mem_text = mem_path.read_text(encoding="utf-8", errors="replace") if mem_path.exists() else mem_text
+    return notes
+
+
 def check_superpowers_and_memory(home: Path, label: str = "default") -> list[Item]:
     items: list[Item] = []
     skills_root = skills_dir_for_home(home)
@@ -1173,6 +1284,7 @@ def run_check() -> Report:
     r.items.extend(check_agnes(HERMES_HOME, "default"))
     r.items.extend(check_frontend_image_skills(HERMES_HOME, "default"))
     r.items.extend(check_superpowers_and_memory(HERMES_HOME, "default"))
+    r.items.extend(check_telegram_rich(HERMES_HOME, "default"))
     if SIDE_HOME.exists():
         r.items.extend(check_profile("side", SIDE_HOME, is_side=True))
         # 副共用技能庫：預裝 skill 以主目錄為準，只再查語音
@@ -1181,6 +1293,7 @@ def run_check() -> Report:
         r.items.extend(
             [i for i in check_superpowers_and_memory(SIDE_HOME, "side") if i.id.endswith(".memory.boost")]
         )
+        r.items.extend(check_telegram_rich(SIDE_HOME, "side"))
 
     # tokens distinct if both present
     main_tok = env_get(HERMES_HOME / ".env", "TELEGRAM_BOT_TOKEN") or env_get(
@@ -1884,6 +1997,11 @@ def run_apply(yes: bool) -> None:
         print("  ", n)
     for n in ensure_memory_boost(HERMES_HOME):
         print("  ", n)
+    print("\n[2g] Telegram 富訊息 + 行為片段")
+    for n in ensure_telegram_rich(HERMES_HOME):
+        print("  ", n)
+    for n in ensure_behavior_snippets(HERMES_HOME):
+        print("  ", n)
     for n in apply_voice_tw(HERMES_HOME):
         print("  ", n)
 
@@ -1897,6 +2015,10 @@ def run_apply(yes: bool) -> None:
         for n in apply_voice_tw(SIDE_HOME):
             print("  ", n)
         for n in ensure_memory_boost(SIDE_HOME):
+            print("   ", n)
+        for n in ensure_telegram_rich(SIDE_HOME):
+            print("   ", n)
+        for n in ensure_behavior_snippets(SIDE_HOME):
             print("   ", n)
         # sync model + fallback from main if side empty-ish
         try:

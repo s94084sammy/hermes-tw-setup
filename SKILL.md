@@ -378,6 +378,13 @@ apply 會：
 - 官方：`hermes model`、`hermes fallback`、`hermes profile`、`hermes mcp`、`hermes tools`  
 - Superpowers 來源範例：https://github.com/obra/superpowers  
 
+
+## 交付、Telegram 富訊息與品管
+
+- **Telegram**：`telegram.extra.rich_messages: true`（apply 寫入）；結構化內容**表格優先**。見 `references/TELEGRAM_RICH.md`。
+- **交付後確認**：主動問使用者是否符合需求，不符就改到對齊。
+- **檔案交付前**：派**獨立 subagent 做純視覺 QA**（逐頁看圖）。**不是**規定檔案要由 subagent 產出。見 `references/DELIVERY_QA.md`。
+
 ## 十一、發佈與安全
 
 - 倉庫：https://github.com/s94084sammy/hermes-tw-setup  

@@ -39,3 +39,9 @@
 
 - 該自動的要自動；該人手的**至少都要有完整指令**（MANUAL_STEPS.md + check 未過印 hint）
 - 公開 GitHub 專案：台灣 Hermes Agent 初始最佳化設定技能（無私密、無客戶資料）
+
+## 交付與 Telegram（2026-08-06）
+
+- Telegram **rich_messages: true**（表格優先原生渲染）
+- 交付後**與使用者確認**是否符合需求
+- 檔案交付前必派 **subagent 純視覺 QA**（看圖驗收；**不是**規定檔案要由 subagent 產出）
