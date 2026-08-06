@@ -117,6 +117,10 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 
 ---
 
+## Dependency model
+
+**No author-machine skill library required.** Install this repo from GitHub, then `apply` pulls remaining pieces over the network (Hermes Hub + git). See [`references/NETWORK_SOURCES.md`](references/NETWORK_SOURCES.md).
+
 ## Bundled companion skills
 
 發行包內含 `bundled/`，**不依賴**開發者本機其它 skill 目錄：

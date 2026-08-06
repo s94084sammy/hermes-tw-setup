@@ -1,3 +1,7 @@
+## 來源原則
+
+優先：**發行包 bundled** 與 **網路（Hub／git）**。不依賴作者本機 `~/.hermes/skills` 其它目錄。詳見 `NETWORK_SOURCES.md`。
+
 # 預裝技能政策（台灣通用基線）
 
 ## 原則

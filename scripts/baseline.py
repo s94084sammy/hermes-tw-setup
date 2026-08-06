@@ -443,18 +443,19 @@ def skill_present(skills_root: Path, name: str) -> bool:
 
 
 def host_skill_source(name: str) -> Optional[Path]:
-    """Locate a skill to copy into a Hermes home.
+    """Locate a skill **shipped with this package** (no developer-machine skill library).
 
-    Priority: this package bundled/ → sibling skills → host ~/.hermes/skills.
-    Public release ships telegram-commands-zh and agnes-image-generation under bundled/.
+    Priority:
+    1. ``hermes-tw-setup/bundled/<name>`` (released on GitHub with the skill)
+    2. This package root when ``name == hermes-tw-setup``
+
+    Other skills (Office / frontend / Superpowers) use **network** installs
+    (Hermes Hub / git clone), not ``~/.hermes/skills`` on the author machine.
     """
     candidates = [
         SKILL_ROOT / "bundled" / name,
         SKILL_ROOT / "bundled" / "media" / name,
         SKILL_ROOT if name == "hermes-tw-setup" else None,
-        SKILL_ROOT.parent / name,
-        Path.home() / ".hermes" / "skills" / name,
-        Path.home() / ".hermes" / "skills" / "media" / name,
     ]
     for c in candidates:
         if c and c.is_dir() and (c / "SKILL.md").exists():
@@ -696,7 +697,7 @@ OFFICE_CAPABILITIES = {
     },
     "pdf": {
         "names": ("pdf", "nano-pdf"),
-        "hub": "",  # prefer bundled nano-pdf / local copy
+        "hub": "skills-sh/anthropics/skills/pdf",
         "title": "PDF",
     },
 }
@@ -764,7 +765,14 @@ def ensure_office_skills(home: Path) -> list[str]:
         if office_skill_present(skills_root, names):
             notes.append(f"Office {cap}: 已有 {names}")
             continue
-        # try local productivity copy first
+        # 1) Network: Hermes Skills Hub
+        hub = meta.get("hub") or ""
+        if hub:
+            notes.append(install_hub_skill(home, hub))
+            if office_skill_present(skills_root, names):
+                continue
+        # 2) Optional: productivity skills that ship **with this machine's Hermes install**
+        #    (not author laptop skill dump)
         copied = False
         for name in names:
             src = host_productivity_skill(name)
@@ -773,12 +781,11 @@ def ensure_office_skills(home: Path) -> list[str]:
                 if dst.exists():
                     shutil.rmtree(dst)
                 shutil.copytree(src, dst, symlinks=True)
-                notes.append(f"Office {cap}: 自 hermes-agent productivity 複製 {name}")
+                notes.append(f"Office {cap}: 自本機 Hermes 安裝 productivity 複製 {name}")
                 copied = True
                 break
         if copied:
             continue
-        # docker: copy from image productivity
         if DOCKER_CONTAINER:
             for name in names:
                 for cand in (
@@ -790,7 +797,6 @@ def ensure_office_skills(home: Path) -> list[str]:
                         if "OK" in (r.stdout or ""):
                             dst = skills_root / name
                             dst.mkdir(parents=True, exist_ok=True)
-                            # docker cp directory
                             subprocess.run(
                                 ["docker", "cp", f"{DOCKER_CONTAINER}:{cand}/.", str(dst) + "/"],
                                 check=True,
@@ -803,13 +809,10 @@ def ensure_office_skills(home: Path) -> list[str]:
                         continue
                 if copied:
                     break
-        if copied:
-            continue
-        hub = meta.get("hub") or ""
-        if hub:
-            notes.append(install_hub_skill(home, hub))
-        else:
-            notes.append(f"Office {cap}: 無 hub id，請確認 bundled nano-pdf／pdf 是否 seed")
+        if not office_skill_present(skills_root, names):
+            notes.append(
+                f"Office {cap}: 仍缺 {names}；請確認網路可裝 Hub，或 Hermes 已含 productivity"
+            )
     return notes
 
 
@@ -918,6 +921,7 @@ def skill_names_present(skills_root: Path, names: tuple) -> bool:
 
 
 def ensure_frontend_image_skills(home: Path) -> list[str]:
+    """Install frontend visual skills via **Hermes Hub** (network), not author laptop skills."""
     notes: list[str] = []
     skills_root = skills_dir_for_home(home)
     skills_root.mkdir(parents=True, exist_ok=True)
@@ -925,64 +929,46 @@ def ensure_frontend_image_skills(home: Path) -> list[str]:
         if skill_names_present(skills_root, meta["names"]):
             notes.append(f"前端生圖 {key}: 已有 {meta['names']}")
             continue
-        # host copies (avoid hub rate limits)
-        host_src = None
-        for name in meta["names"]:
-            for cand in (
-                Path.home() / ".hermes" / "skills" / name,
-                Path.home() / ".hermes" / "skills" / "anthropic" / name,
-                Path.home() / ".grok" / "skills" / name,
-                Path.home() / ".hermes" / "hermes-agent" / "skills" / "creative" / name,
-            ):
-                if cand.is_dir() and (cand / "SKILL.md").exists():
-                    host_src = cand
-                    break
-            if host_src:
-                break
-        if host_src:
-            dst = skills_root / host_src.name
-            if dst.exists():
-                shutil.rmtree(dst)
-            shutil.copytree(host_src, dst, symlinks=True)
-            notes.append(f"前端生圖 {key}: 自本機複製 {host_src}")
-            continue
-        # try copy p5js from hermes-agent creative
-        if key == "algorithmic-art":
-            for name in ("p5js", "algorithmic-art"):
-                src = Path.home() / ".hermes" / "hermes-agent" / "skills" / "creative" / name
-                if src.is_dir() and (src / "SKILL.md").exists():
-                    dst = skills_root / name
-                    if dst.exists():
-                        shutil.rmtree(dst)
-                    shutil.copytree(src, dst, symlinks=True)
-                    notes.append(f"前端生圖: 複製 creative/{name}")
-                    break
-            if skill_names_present(skills_root, meta["names"]):
-                continue
-            if DOCKER_CONTAINER:
-                for name in ("p5js", "algorithmic-art"):
-                    cand = f"/opt/hermes/skills/creative/{name}"
-                    try:
-                        r = docker_exec(["sh", "-c", f"test -f {cand}/SKILL.md && echo OK"], timeout=10)
-                        if "OK" in (r.stdout or ""):
-                            dst = skills_root / name
-                            dst.mkdir(parents=True, exist_ok=True)
-                            subprocess.run(
-                                ["docker", "cp", f"{DOCKER_CONTAINER}:{cand}/.", str(dst) + "/"],
-                                check=True,
-                                timeout=60,
-                            )
-                            notes.append(f"前端生圖: 自容器複製 {name}")
-                            break
-                    except Exception as e:
-                        notes.append(f"容器複製 {name} 失敗: {e}")
-            if skill_names_present(skills_root, meta["names"]):
-                continue
         hub = meta.get("hub") or ""
         if hub:
             notes.append(install_hub_skill(home, hub))
-        else:
-            notes.append(f"前端生圖 {key}: 無法安裝")
+            if skill_names_present(skills_root, meta["names"]):
+                continue
+        # Fallback: Hermes product tree on **this** install (bundled with Hermes)
+        for name in meta["names"]:
+            for base in (
+                Path.home() / ".hermes" / "hermes-agent" / "skills" / "creative" / name,
+            ):
+                if base.is_dir() and (base / "SKILL.md").exists():
+                    dst = skills_root / name
+                    if dst.exists():
+                        shutil.rmtree(dst)
+                    shutil.copytree(base, dst, symlinks=True)
+                    notes.append(f"前端生圖 {key}: 自本機 Hermes creative/{name} 複製")
+                    break
+            if skill_names_present(skills_root, meta["names"]):
+                break
+        if DOCKER_CONTAINER and not skill_names_present(skills_root, meta["names"]):
+            for name in meta["names"]:
+                cand = f"/opt/hermes/skills/creative/{name}"
+                try:
+                    r = docker_exec(["sh", "-c", f"test -f {cand}/SKILL.md && echo OK"], timeout=10)
+                    if "OK" in (r.stdout or ""):
+                        dst = skills_root / name
+                        dst.mkdir(parents=True, exist_ok=True)
+                        subprocess.run(
+                            ["docker", "cp", f"{DOCKER_CONTAINER}:{cand}/.", str(dst) + "/"],
+                            check=True,
+                            timeout=60,
+                        )
+                        notes.append(f"前端生圖 {key}: 自容器 creative/{name}")
+                        break
+                except Exception as e:
+                    notes.append(f"容器複製 {name} 失敗: {e}")
+        if not skill_names_present(skills_root, meta["names"]):
+            notes.append(
+                f"前端生圖 {key}: 仍缺；請確認網路可 `hermes skills install {hub}`"
+            )
     return notes
 
 
@@ -1006,67 +992,62 @@ def check_frontend_image_skills(home: Path, label: str = "default") -> list[Item
 
 
 def ensure_superpowers(home: Path) -> list[str]:
+    """Install Superpowers via **git** (network). No author-machine skill cache required."""
     notes: list[str] = []
     skills_root = skills_dir_for_home(home)
-    src_candidates = [
-        SKILL_ROOT / "bundled" / "superpowers",
-        Path.home() / ".hermes" / "skills" / "superpowers",
-        Path.home() / ".claude" / "plugins" / "cache" / "superpowers-dev" / "superpowers",
-    ]
+    skills_root.mkdir(parents=True, exist_ok=True)
+    dst = skills_root / "superpowers"
+    if superpowers_present(skills_root):
+        notes.append(f"Superpowers 已存在 → {dst}")
+        return notes
+
+    # Optional: package-bundled (if a release chooses to vendor)
     src = None
-    for c in src_candidates:
-        if not c or not c.is_dir():
-            continue
-        if (c / "using-superpowers" / "SKILL.md").exists() or (c / "brainstorming" / "SKILL.md").exists():
-            src = c
-            break
-        if (c / "skills" / "using-superpowers" / "SKILL.md").exists():
-            src = c / "skills"
-            break
-        if (c / "SKILL.md").exists():
-            src = c
-            break
+    bundled = SKILL_ROOT / "bundled" / "superpowers"
+    if bundled.is_dir() and (
+        (bundled / "using-superpowers" / "SKILL.md").exists()
+        or (bundled / "brainstorming" / "SKILL.md").exists()
+    ):
+        src = bundled
+        notes.append("使用套件 bundled/superpowers")
+
     if not src:
-        cache = Path.home() / ".claude" / "plugins" / "cache" / "superpowers-dev" / "superpowers"
-        if cache.is_dir():
-            for child in sorted(cache.iterdir(), reverse=True):
-                if child.is_dir() and (
-                    (child / "using-superpowers" / "SKILL.md").exists()
-                    or (child / "skills" / "using-superpowers" / "SKILL.md").exists()
-                ):
-                    src = child / "skills" if (child / "skills").is_dir() else child
-                    break
-    if not src:
-        # Public machines: clone obra/superpowers
         tmp = Path("/tmp/hermes-tw-superpowers-src")
         try:
             if tmp.exists():
                 shutil.rmtree(tmp)
             r = subprocess.run(
-                ["git", "clone", "--depth", "1", "https://github.com/obra/superpowers.git", str(tmp)],
+                [
+                    "git",
+                    "clone",
+                    "--depth",
+                    "1",
+                    "https://github.com/obra/superpowers.git",
+                    str(tmp),
+                ],
                 capture_output=True,
                 text=True,
                 timeout=180,
             )
-            notes.append(f"git clone obra/superpowers → {r.returncode}")
-            if r.returncode == 0:
-                if (tmp / "skills" / "using-superpowers" / "SKILL.md").exists():
-                    src = tmp / "skills"
-                elif (tmp / "using-superpowers" / "SKILL.md").exists():
-                    src = tmp
-                else:
-                    # flat docs layout
-                    for cand in tmp.rglob("using-superpowers/SKILL.md"):
-                        src = cand.parent.parent
-                        break
+            notes.append(f"git clone https://github.com/obra/superpowers → code={r.returncode}")
+            if r.returncode != 0:
+                notes.append(((r.stderr or r.stdout or "")[:300]))
+            elif (tmp / "skills" / "using-superpowers" / "SKILL.md").exists():
+                src = tmp / "skills"
+            elif (tmp / "using-superpowers" / "SKILL.md").exists():
+                src = tmp
+            else:
+                for cand in tmp.rglob("using-superpowers/SKILL.md"):
+                    src = cand.parent.parent
+                    break
         except Exception as e:
             notes.append(f"clone superpowers 失敗：{e}")
+
     if not src:
         notes.append(
-            "找不到 Superpowers：請 git clone https://github.com/obra/superpowers 後再 apply"
+            "Superpowers 安裝失敗：需要網路 git 存取 https://github.com/obra/superpowers"
         )
         return notes
-    dst = skills_root / "superpowers"
     if dst.exists():
         shutil.rmtree(dst)
     shutil.copytree(src, dst, symlinks=True)
@@ -1941,8 +1922,6 @@ def apply_telegram_zh() -> list[str]:
     candidates = [
         HERMES_HOME / "skills" / "telegram-commands-zh" / "apply_patch.py",
         SKILL_ROOT / "bundled" / "telegram-commands-zh" / "apply_patch.py",
-        Path.home() / ".hermes" / "skills" / "telegram-commands-zh" / "apply_patch.py",
-        Path.home() / ".hermes" / "skills" / "hermes-tw-setup" / "bundled" / "telegram-commands-zh" / "apply_patch.py",
     ]
     script = next((p for p in candidates if p.exists()), None)
     if DOCKER_CONTAINER:
