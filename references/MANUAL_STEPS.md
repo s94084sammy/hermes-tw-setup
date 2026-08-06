@@ -9,6 +9,9 @@ apply 腳本會自動修「能改設定檔／裝 skill」的項目。
 
 ## 0. 安裝本技能
 
+發行包內含 `bundled/telegram-commands-zh` 與 `bundled/agnes-image-generation`，**乾淨機器** apply 不需另有本機 skill 庫。Superpowers 會在 apply 時自 GitHub clone。
+
+
 ```bash
 # 方式 A：從 GitHub 複製到 Hermes 技能目錄
 git clone https://github.com/s94084sammy/hermes-tw-setup.git ~/.hermes/skills/hermes-tw-setup

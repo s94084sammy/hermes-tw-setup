@@ -117,6 +117,18 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 
 ---
 
+## Bundled companion skills
+
+發行包內含 `bundled/`，**不依賴**開發者本機其它 skill 目錄：
+
+| 路徑 | 說明 |
+|------|------|
+| `bundled/telegram-commands-zh` | Telegram 選單繁中 |
+| `bundled/agnes-image-generation` | Agnes 免費生圖 |
+| Superpowers | apply 時自 GitHub `obra/superpowers` clone（未內嵌以控制體積） |
+
+Office／frontend 技能優先 Hub 或本機已有副本。
+
 ## Repository layout
 
 ```text

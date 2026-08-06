@@ -17,9 +17,9 @@
 | 技能 | 用途 | 安裝方式 |
 |------|------|----------|
 | `hermes-tw-setup` | 本基線 check／apply | 複製本 skill 目錄到 `$HERMES_HOME/skills/hermes-tw-setup` |
-| `telegram-commands-zh` | Telegram 選單繁中 | 複製到 skills（若來源機有） |
+| `telegram-commands-zh` | Telegram 選單繁中 | **發行包** `bundled/telegram-commands-zh` → skills |
 | `duckduckgo-search` | 免 API 搜尋備援 | `hermes skills repair-official duckduckgo-search --restore -y` |
-| `agnes-image-generation` | **免費生圖預設**（Agnes AI） | 複製 `media/agnes-image-generation`；`.env` 設 `AGNES_API_KEY`（platform.agnes-ai.com 免費申請） |
+| `agnes-image-generation` | **免費生圖預設**（Agnes AI） | **發行包** `bundled/agnes-image-generation`；`.env` 設 `AGNES_API_KEY` |
 
 ### B2. 常見 Office 檔案（**預裝、缺則自動裝**）
 

@@ -443,11 +443,18 @@ def skill_present(skills_root: Path, name: str) -> bool:
 
 
 def host_skill_source(name: str) -> Optional[Path]:
-    """Locate a skill on the host to copy into a Hermes home."""
+    """Locate a skill to copy into a Hermes home.
+
+    Priority: this package bundled/ → sibling skills → host ~/.hermes/skills.
+    Public release ships telegram-commands-zh and agnes-image-generation under bundled/.
+    """
     candidates = [
-        Path.home() / ".hermes" / "skills" / name,
-        SKILL_ROOT.parent / name,  # sibling under ~/.hermes/skills when skill is there
+        SKILL_ROOT / "bundled" / name,
+        SKILL_ROOT / "bundled" / "media" / name,
         SKILL_ROOT if name == "hermes-tw-setup" else None,
+        SKILL_ROOT.parent / name,
+        Path.home() / ".hermes" / "skills" / name,
+        Path.home() / ".hermes" / "skills" / "media" / name,
     ]
     for c in candidates:
         if c and c.is_dir() and (c / "SKILL.md").exists():
@@ -830,14 +837,11 @@ def ensure_agnes_image(home: Path) -> list[str]:
     notes: list[str] = []
     skills_root = skills_dir_for_home(home)
     # prefer flat name for discoverability
-    src_candidates = [
-        Path.home() / ".hermes" / "skills" / "media" / "agnes-image-generation",
-        Path.home() / ".hermes" / "skills" / "agnes-image-generation",
-        skills_dir_for_home(Path.home() / ".hermes") / "media" / "agnes-image-generation",
-    ]
-    src = next((p for p in src_candidates if p.is_dir() and (p / "SKILL.md").exists()), None)
+    src = host_skill_source("agnes-image-generation")
     if not src:
-        notes.append("找不到本機 agnes-image-generation 來源（應在 ~/.hermes/skills/media/）")
+        notes.append(
+            "找不到 agnes-image-generation（應在 hermes-tw-setup/bundled/ 或本機 skills）"
+        )
         return notes
     dst = skills_root / "agnes-image-generation"
     if dst.exists():
@@ -1005,23 +1009,24 @@ def ensure_superpowers(home: Path) -> list[str]:
     notes: list[str] = []
     skills_root = skills_dir_for_home(home)
     src_candidates = [
+        SKILL_ROOT / "bundled" / "superpowers",
         Path.home() / ".hermes" / "skills" / "superpowers",
-        Path.home() / "superpowers" / "docs" / "superpowers",  # unlikely
         Path.home() / ".claude" / "plugins" / "cache" / "superpowers-dev" / "superpowers",
     ]
     src = None
     for c in src_candidates:
-        if not c.is_dir():
+        if not c or not c.is_dir():
             continue
-        # pack has using-superpowers/SKILL.md or brainstorming/SKILL.md
         if (c / "using-superpowers" / "SKILL.md").exists() or (c / "brainstorming" / "SKILL.md").exists():
             src = c
+            break
+        if (c / "skills" / "using-superpowers" / "SKILL.md").exists():
+            src = c / "skills"
             break
         if (c / "SKILL.md").exists():
             src = c
             break
     if not src:
-        # try nested version folder
         cache = Path.home() / ".claude" / "plugins" / "cache" / "superpowers-dev" / "superpowers"
         if cache.is_dir():
             for child in sorted(cache.iterdir(), reverse=True):
@@ -1032,7 +1037,34 @@ def ensure_superpowers(home: Path) -> list[str]:
                     src = child / "skills" if (child / "skills").is_dir() else child
                     break
     if not src:
-        notes.append("找不到 Superpowers 來源目錄（~/.hermes/skills/superpowers）")
+        # Public machines: clone obra/superpowers
+        tmp = Path("/tmp/hermes-tw-superpowers-src")
+        try:
+            if tmp.exists():
+                shutil.rmtree(tmp)
+            r = subprocess.run(
+                ["git", "clone", "--depth", "1", "https://github.com/obra/superpowers.git", str(tmp)],
+                capture_output=True,
+                text=True,
+                timeout=180,
+            )
+            notes.append(f"git clone obra/superpowers → {r.returncode}")
+            if r.returncode == 0:
+                if (tmp / "skills" / "using-superpowers" / "SKILL.md").exists():
+                    src = tmp / "skills"
+                elif (tmp / "using-superpowers" / "SKILL.md").exists():
+                    src = tmp
+                else:
+                    # flat docs layout
+                    for cand in tmp.rglob("using-superpowers/SKILL.md"):
+                        src = cand.parent.parent
+                        break
+        except Exception as e:
+            notes.append(f"clone superpowers 失敗：{e}")
+    if not src:
+        notes.append(
+            "找不到 Superpowers：請 git clone https://github.com/obra/superpowers 後再 apply"
+        )
         return notes
     dst = skills_root / "superpowers"
     if dst.exists():
@@ -1908,7 +1940,9 @@ def apply_telegram_zh() -> list[str]:
     notes: list[str] = []
     candidates = [
         HERMES_HOME / "skills" / "telegram-commands-zh" / "apply_patch.py",
+        SKILL_ROOT / "bundled" / "telegram-commands-zh" / "apply_patch.py",
         Path.home() / ".hermes" / "skills" / "telegram-commands-zh" / "apply_patch.py",
+        Path.home() / ".hermes" / "skills" / "hermes-tw-setup" / "bundled" / "telegram-commands-zh" / "apply_patch.py",
     ]
     script = next((p for p in candidates if p.exists()), None)
     if DOCKER_CONTAINER:
