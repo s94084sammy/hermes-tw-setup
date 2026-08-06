@@ -54,7 +54,7 @@
 ## Telegram 富訊息（表格優先）
 
 - 基線已開 `telegram.extra.rich_messages: true`；結構化內容**優先用 GFM pipe table**（含 `|---|`，表前空一行）。
-- 不要預設「Telegram 不能表格」；rich 失敗再降級。細節見 `references/TELEGRAM_RICH.md`。
+- 不要預設「Telegram 不能表格」；官方預設關 rich，基線會打開。開通步驟與**表前空行／缺分隔列／未重啟／standalone 無 rich**等踩坑見 `references/TELEGRAM_RICH.md`。
 - 狀態對照、檢查結果、參數摘要、排行等多用表格，少用難掃的長點列。
 
 ## 交付確認（與使用者對齊）

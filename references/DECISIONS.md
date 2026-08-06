@@ -45,3 +45,8 @@
 - Telegram **rich_messages: true**（表格優先原生渲染）
 - 交付後**與使用者確認**是否符合需求
 - 檔案交付前必派 **subagent 純視覺 QA**（看圖驗收；**不是**規定檔案要由 subagent 產出）
+
+## Telegram Rich 表格（補充）
+
+- 官方預設 rich_messages=false；基線 true + 重啟 gateway
+- 踩坑寫入 TELEGRAM_RICH.md／MANUAL_STEPS（表前空行、分隔列、路徑、rich_drafts 等）

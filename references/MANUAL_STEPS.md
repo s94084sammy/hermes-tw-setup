@@ -301,3 +301,35 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check
 | 禁休眠／自啟 | 半自動 | 本檔 §8；改電源前先問使用者 |
 
 **禁止**：只丟網址沒指令；未過 check 卻不印修復指令。
+
+
+## 11. Telegram 富訊息（表格）— 開通與踩坑
+
+官方預設 **關閉** `rich_messages`（怕難複製純文字）。台灣基線 **打開**。
+
+```bash
+# 自動
+python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes
+
+# 或手動：主副 config.yaml
+# telegram:
+#   extra:
+#     rich_messages: true
+#     # rich_drafts: false
+
+# 必重啟 gateway 後才生效
+systemctl --user restart hermes-gateway
+```
+
+開了之後常見坑（詳見 `TELEGRAM_RICH.md`）：
+
+1. 沒重啟 gateway  
+2. 表缺 `|---|` 分隔列 → 不進 rich  
+3. **表前沒空一行** → 整表變直線  
+4. 排程／standalone 路徑可能沒 rich，對話有  
+5. 過長 fallback；舊 ptb 無 sendRichMessage  
+6. 勿亂開 `rich_drafts`（Desktop 疊影）  
+7. 主副 profile 都要開  
+
+驗證：對 bot 送一張合法 pipe table，應見格子表不是 bullet。
+
