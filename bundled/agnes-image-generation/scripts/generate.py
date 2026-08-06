@@ -41,9 +41,6 @@ def get_api_key():
         env_paths.append(Path(hh) / "profiles" / "side" / ".env")
     env_paths.extend([
         Path.home() / ".hermes-demo" / ".env",
-        Path.home() / ".hermes/profiles/audit/.env",
-        Path.home() / ".hermes/profiles/coo/.env",
-        Path.home() / ".hermes/profiles/bd/.env",
         Path.home() / ".hermes/profiles/default/.env",
         Path.home() / ".hermes/.env",
     ])
