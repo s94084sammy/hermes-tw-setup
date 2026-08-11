@@ -6,8 +6,7 @@
 [![Release](https://img.shields.io/github/v/release/s94084sammy/hermes-tw-setup?label=release)](https://github.com/s94084sammy/hermes-tw-setup/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**目前最新發行：[`v1.2.0`](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)**  
-請一律依 **semver 數字大小** 選版本；`v1.1.0` 曾誤標在較新的提交上，已由 `v1.2.0` 取代，請勿再釘 `v1.1.0`。
+**目前最新發行：[`v1.2.0`](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)**
 
 ---
 
@@ -27,14 +26,13 @@
 
 ## What's new in v1.2.0
 
-對齊 [Release v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)（承接原誤標為 v1.1.0 的功能線）：
+對齊 [Release v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)：
 
 - **Telegram 表格穩定**：`rich_messages: true`，並**關閉 streaming**（Hermes v0.20+ 開 streaming 時表格容易被拆成條列）
 - **三層驗證**寫入文件：設定正確 ≠ API 有紀錄 ≠ 使用者目視是格子表（見 `references/TELEGRAM_RICH.md`）
 - **新增** `bundled/tool-progress-zh`：工具進度氣泡繁中（例如「執行程式」「搜尋檔案」）
 - **依賴僅網路**：Superpowers 只從 GitHub clone；文件與腳本不依賴作者本機 skill 路徑
 - **check / apply** 一併檢查 `streaming_off` 與進度繁中是否就緒
-- **版本線理順**：以 `v1.2.0` 為最新；舊的 `v1.1.0` tag 僅保留歷史，內容已併入本版
 
 更早版本摘要見下方 [Changelog](#changelog)。
 
@@ -69,8 +67,6 @@ cd ~/.hermes/skills/hermes-tw-setup
 git fetch --tags
 git checkout v1.2.0
 ```
-
-若先前釘的是 `v1.1.0`，請改 checkout `v1.2.0`（功能相同或更新，且版本號正確）。
 
 追 main 開發頭也可，但正式部署仍建議用 [Releases](https://github.com/s94084sammy/hermes-tw-setup/releases) 的 **Latest**。
 
@@ -200,7 +196,7 @@ README.md
 
 ## Changelog
 
-版本由舊到新（semver）：
+版本由舊到新：
 
 ### [v1.0.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.0.0) — 2026-08-05
 
@@ -214,13 +210,9 @@ README.md
 
 網路優先依賴：不依賴作者本機 skill；來源表寫入 `NETWORK_SOURCES.md`。
 
-### [v1.1.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.0) — 2026-08-09（**誤標，請勿使用**）
-
-本應接在 `v1.1.2` 之後，卻誤用較小的 `v1.1.0` 編號。功能已收進 **`v1.2.0`**。此 tag 僅保留歷史，新裝／升級請改用 `v1.2.0`。
-
 ### [v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0) — 2026-08-11（**Latest**）
 
-理順版本號。內容含表格穩定（rich 開、streaming 關）、三層驗證、`tool-progress-zh`、網路 only 依賴，以及文件釘 tag 安裝說明。取代誤標的 `v1.1.0`。
+表格穩定（rich 開、streaming 關）、三層驗證、`tool-progress-zh`、網路 only 依賴，以及文件釘 tag 安裝說明。
 
 ---
 
