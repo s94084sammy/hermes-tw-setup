@@ -51,7 +51,7 @@
 - 官方預設 rich_messages=false；基線 true + 重啟 gateway
 - 踩坑寫入 TELEGRAM_RICH.md／MANUAL_STEPS（表前空行、分隔列、路徑、rich_drafts 等）
 
-## v1.1.0（2026-08-10）— 表格穩定 + 進度繁中
+## v1.2.0（2026-08-11）— 表格穩定 + 進度繁中 + 版本理順
 
 - **Telegram streaming 預設關**（`streaming.enabled: false` + `display.platforms.telegram.streaming: false`）
 - **rich_drafts: false** 寫死建議
@@ -59,3 +59,4 @@
 - **bundled/tool-progress-zh**：工具進度標籤繁中（不依賴作者本機；改部署端 display.py）
 - Superpowers 僅 **git clone 網路來源**（文件不再寫「從作者本機複製」）
 - `tool_progress: none` 視為無效值，apply 改寫成明確 `all`
+- **版本號**：曾誤把此功能線標成 `v1.1.0`（小於既有 `v1.1.2`）；正式改以 **`v1.2.0`** 為 Latest。`v1.1.0` tag 僅歷史、勿再釘。
