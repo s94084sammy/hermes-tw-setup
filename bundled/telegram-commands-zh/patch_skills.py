@@ -104,8 +104,8 @@ NAME_TO_ZH = {
     "ppt-generator": "將講稿一鍵生成專業級 HTML 演示稿",
     "quotation-generator": "生成報價單",
     "site-deploy": "透過 Cloudflare Tunnel 部署靜態網站",
-    "article-image-generator": "產生符合 替代方案有限公司官網風格的 1:1 文章圖卡",
-    "ui-ux-pro-max": "UI/UX 設計與實作（含 替代方案有限公司設計系統）",
+    "article-image-generator": "產生符合官網風格的 1:1 文章圖卡",
+    "ui-ux-pro-max": "UI/UX 設計與實作（含設計系統）",
     "weekly-content-series": "每週內容系列自動化",
 
     # autonomous-ai-agents
