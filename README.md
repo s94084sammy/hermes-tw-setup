@@ -6,6 +6,9 @@
 [![Release](https://img.shields.io/github/v/release/s94084sammy/hermes-tw-setup?label=release)](https://github.com/s94084sammy/hermes-tw-setup/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
+**目前最新發行：[`v1.1.0`](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.0)**（2026-08-09）  
+請以 Releases 頁的 **Latest** 為準（版本號曾調整過，勿只比數字大小）。
+
 ---
 
 ## Overview
@@ -22,22 +25,51 @@
 
 ---
 
+## What's new in v1.1.0
+
+對齊 [Release v1.1.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.0)：
+
+- **Telegram 表格穩定**：`rich_messages: true`，並**關閉 streaming**（Hermes v0.20+ 開 streaming 時表格容易被拆成條列）
+- **三層驗證**寫入文件：設定正確 ≠ API 有紀錄 ≠ 使用者目視是格子表（見 `references/TELEGRAM_RICH.md`）
+- **新增** `bundled/tool-progress-zh`：工具進度氣泡繁中（例如「執行程式」「搜尋檔案」）
+- **依賴僅網路**：Superpowers 只從 GitHub clone；文件與腳本不依賴作者本機 skill 路徑
+- **check / apply** 一併檢查 `streaming_off` 與進度繁中是否就緒
+
+更早版本摘要見下方 [Changelog](#changelog)。
+
+---
+
 ## Requirements
 
-- 已安裝 [Hermes Agent](https://github.com/NousResearch/hermes-agent)（或相容發行版）
+- 已安裝 [Hermes Agent](https://github.com/NousResearch/hermes-agent)（建議 **v0.20+**，表格／rich 行為與此基線一致）
 - Python 3，以及 `PyYAML`
 - 可選：Docker（隔離驗證）、Chrome／Chromium（DevTools／CDP）
+- apply 時需可連 GitHub／Skills Hub（無網路時仍可套用設定與 `bundled/`，但 Hub 與 Superpowers 會略過）
 
 ---
 
 ## Install
 
+建議鎖定 **Latest release**（目前 `v1.1.0`）：
+
 ```bash
-git clone https://github.com/s94084sammy/hermes-tw-setup.git ~/.hermes/skills/hermes-tw-setup
+# 新裝：釘最新發行 tag
+git clone --branch v1.1.0 \
+  https://github.com/s94084sammy/hermes-tw-setup.git \
+  ~/.hermes/skills/hermes-tw-setup
+
 pip install --user pyyaml
 ```
 
-建議以 [Releases](https://github.com/s94084sammy/hermes-tw-setup/releases) 的 **`v1.1.0` 或更新**版本鎖定。
+已有本機目錄時升級：
+
+```bash
+cd ~/.hermes/skills/hermes-tw-setup
+git fetch --tags
+git checkout v1.1.0
+```
+
+追 main 開發頭也可，但正式部署仍建議用 [Releases](https://github.com/s94084sammy/hermes-tw-setup/releases) 的 **Latest**。
 
 ---
 
@@ -49,6 +81,8 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check
 
 # 套用基線（冪等；需明確 --yes）
 python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes
+
+# 改完設定後務必重啟 gateway，Telegram rich／streaming／繁中進度才會生效
 ```
 
 隔離環境（可選）：
@@ -62,9 +96,11 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 
 完整操作說明：
 
-- [`references/MANUAL_STEPS.md`](references/MANUAL_STEPS.md) — 開箱與部署步驟  
-- [`references/API_KEYS_BROWSER.md`](references/API_KEYS_BROWSER.md) — 以既有瀏覽器工作階段配置 API 金鑰  
-- [`SKILL.md`](SKILL.md) — 供 Agent 載入的技能規格  
+- [`references/MANUAL_STEPS.md`](references/MANUAL_STEPS.md) — 開箱與部署步驟
+- [`references/TELEGRAM_RICH.md`](references/TELEGRAM_RICH.md) — 表格／rich／streaming 與三層驗證
+- [`references/NETWORK_SOURCES.md`](references/NETWORK_SOURCES.md) — 依賴來源（隨包 + 網路 only）
+- [`references/API_KEYS_BROWSER.md`](references/API_KEYS_BROWSER.md) — 以既有瀏覽器工作階段配置 API 金鑰
+- [`SKILL.md`](SKILL.md) — 供 Agent 載入的技能規格
 
 ---
 
@@ -82,6 +118,7 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 - 介面語言 `display.language: zh-TW`
 - Telegram 選單繁中；**工具進度氣泡繁中**（執行程式／搜尋檔案…）
 - Telegram：**rich 表格開** + **streaming 關**（v0.20+ 表格才穩）
+- 表格是否「真的成功」採三層：設定 → API → 目視格子
 - 可選台灣 TTS／STT 語音偏好
 
 ### Search & models
@@ -94,7 +131,7 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 
 - 文件：Word／Excel／PowerPoint／PDF 相關技能
 - 影像：Agnes 生圖技能；前端程式碼產圖（設計／Canvas／生成藝術）＋瀏覽器截圖流程
-- 工作方法：[Superpowers](https://github.com/obra/superpowers) 技能包
+- 工作方法：[Superpowers](https://github.com/obra/superpowers) 技能包（apply 時網路 clone）
 - 記憶：Hermes `holographic` 外部記憶（本機、無需額外套件帳號）
 - 預設保留官方 bundled 技能完整集合（不做激進裁剪）
 
@@ -116,6 +153,7 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 3. Agnes API key（若使用免費生圖路徑）
 4. 兩個獨立的 Telegram Bot token（主／副）
 5. 主機自啟與電源策略（變更系統設定前應取得操作者同意）
+6. apply 後**重啟 gateway**，再目視確認 Telegram 表格為格子表
 
 ---
 
@@ -144,7 +182,7 @@ scripts/baseline.py           check / apply 實作
 bundled/                      隨包附屬技能與補丁（不靠作者本機）
 references/
   MANUAL_STEPS.md             部署手冊
-  TELEGRAM_RICH.md            表格／rich／streaming 基線
+  TELEGRAM_RICH.md            表格／rich／streaming／三層驗證
   NETWORK_SOURCES.md          依賴：隨包 + 網路 only
   API_KEYS_BROWSER.md         瀏覽器金鑰流程
   SOUL-TW.md                  行為基線
@@ -157,21 +195,43 @@ README.md
 
 ---
 
+## Changelog
+
+### [v1.1.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.0) — 2026-08-09（Latest）
+
+表格穩定 + 進度繁中。`rich_messages` 開、`streaming` 關；三層驗證文件；`bundled/tool-progress-zh`；Superpowers 僅網路 clone；check／apply 驗 streaming 與進度繁中。
+
+### [v1.1.2](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.2) — 2026-08-06
+
+網路優先依賴：不依賴作者本機 skill；來源表寫入 `NETWORK_SOURCES.md`。
+
+### [v1.1.1](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.1.1) — 2026-08-06
+
+乾淨電腦可 apply：發行包附 `bundled/`（選單繁中、Agnes）；繁中補丁不再寫死絕對路徑。
+
+### [v1.0.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.0.0) — 2026-08-05
+
+首發：雙 profile、台灣時區／繁中、AnySearch／OpenRouter 方向、預裝與主機常駐基線。
+
+> 說明：tag 編號曾調整，**時間上 v1.1.0 新於 v1.1.2**。請以 GitHub Releases 的 Latest 標籤為準。
+
+---
+
 ## Design principles
 
-1. **可驗證**：check 輸出可對照、可重跑  
-2. **可修復**：apply 以冪等方式收斂至基線；無法自動完成者輸出明確指令  
-3. **最小憑證面**：優先免金鑰路徑；密鑰僅存在於部署端環境變數  
-4. **在地優先**：台灣時區、繁體中文介面與溝通習慣  
-5. **安全預設**：沿用 Hermes 官方防護機制，不另行堆疊說教式拒絕層  
+1. **可驗證**：check 輸出可對照、可重跑
+2. **可修復**：apply 以冪等方式收斂至基線；無法自動完成者輸出明確指令
+3. **最小憑證面**：優先免金鑰路徑；密鑰僅存在於部署端環境變數
+4. **在地優先**：台灣時區、繁體中文介面與溝通習慣
+5. **安全預設**：沿用 Hermes 官方防護機制，不另行堆疊說教式拒絕層
 
 ---
 
 ## Security notes
 
-- 請勿將 `.env`、token 或私人設定提交至版本庫  
-- 金鑰與 OAuth 僅應寫入本機 Hermes 環境；對話與 issue 中避免貼出完整密鑰  
-- 第三方技能與上游專案（Hermes、Superpowers、各 API 服務）遵循其各自授權與服務條款  
+- 請勿將 `.env`、token 或私人設定提交至版本庫
+- 金鑰與 OAuth 僅應寫入本機 Hermes 環境；對話與 issue 中避免貼出完整密鑰
+- 第三方技能與上游專案（Hermes、Superpowers、各 API 服務）遵循其各自授權與服務條款
 
 ---
 
