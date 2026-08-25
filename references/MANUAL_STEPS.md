@@ -20,7 +20,7 @@ git clone https://github.com/s94084sammy/hermes-tw-setup.git ~/.hermes/skills/he
 cd ~/.hermes/skills/hermes-tw-setup && git pull
 
 # 依賴
-pip install --user pyyaml
+pip install --user 'PyYAML>=6.0.1,<7'
 
 # 檢查／套用
 python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check
@@ -169,7 +169,8 @@ systemctl --user enable --now hermes-gateway
 ## 5. Superpowers（若 apply 找不到來源）
 
 ```bash
-git clone --depth 1 https://github.com/obra/superpowers.git /tmp/superpowers
+# 必須釘 tag，不要 clone 預設分支頭（提交見 references/PINNED_SOURCES.md）
+git clone --depth 1 --branch v4.1.1 https://github.com/obra/superpowers.git /tmp/superpowers
 # 上游結構若為 skills/ 子目錄：
 mkdir -p ~/.hermes/skills
 if [ -d /tmp/superpowers/skills ]; then

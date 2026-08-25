@@ -10,7 +10,7 @@
 - 排版／資訊圖生圖：frontend-design、canvas-design、algorithmic-art + CDP 截圖；氛圍圖用 Agnes。
 - OpenRouter／Agnes 的 API key：agent 用**已 Google 登入**的 Chrome（CDP）自取並寫入 .env；不處理 Telegram bot 自動申請。
 - 取 OpenRouter／Agnes key：只准 attach 使用者已登入 Chrome（CDP）；禁止陌生／無痕瀏覽器；Chrome/CDP 限制要克服見 API_KEYS_BROWSER.md。
-- 預裝 Superpowers 技能包（網路 git clone）；強化記憶預設 holographic（本機 SQLite）。不強制裁剪 skill。
+- 預裝 Superpowers 技能包（釘版本的網路 git）；強化記憶預設 holographic（本機 SQLite）。不強制裁剪 skill。
 - Telegram：`telegram.extra.rich_messages: true`，且 `display.platforms.telegram.streaming: false`（表格穩定）；結構化**表格優先**（GFM pipe table，表前空行）。見 TELEGRAM_RICH.md。
 - 表格成功＝設定＋API＋使用者目視格子；禁止只看 rich 紀錄就宣稱完成。
 - 工具進度氣泡繁中（執行程式／搜尋檔案…）：`bundled/tool-progress-zh`；Hermes update 後重套。

@@ -1,15 +1,16 @@
-import os
 #!/usr/bin/env python3
 """
 技能敘述中文化補丁
-遞迴掃描 ~/.hermes/skills/ 下所有 SKILL.md，透過 name frontmatter 對應中文。
-更新 Hermes 後執行一次即可。
+遞迴掃描 $HERMES_HOME/skills/ 下公開技能的 SKILL.md，透過 name frontmatter 對應中文。
+不掃描作者機器其它目錄。更新 Hermes 後執行一次即可。
 """
 
+import os
 import re
 from pathlib import Path
 
-SKILLS_DIR = Path(os.getenv("HERMES_HOME", str(Path.home() / ".hermes"))) / "skills"
+_HOME = Path(os.getenv("HERMES_HOME", str(Path.home() / ".hermes"))).expanduser()
+SKILLS_DIR = _HOME / "skills"
 
 # name frontmatter → 中文描述
 NAME_TO_ZH = {
@@ -20,7 +21,6 @@ NAME_TO_ZH = {
     "gguf": "GGUF 格式和 llama.cpp 量化（高效 CPU/GPU 推論）",
     "guidance": "用正規表達式和語法控制 LLM 輸出，保證輸出結構",
     "llama-cpp": "在 CPU、Apple Silicon、消費者 GPU 上執行 LLM 推論",
-    "obliteratus": "移除開放權重 LLM 的拒絕行為",
     "outlines": "保證生成有效的 JSON/XML/程式碼結構",
     "vllm": "以高吞吐量服務 LLM（vLLM PagedAttention）",
     "axolotl": "使用 Axolotl 微調 LLM（專家指引）",
@@ -41,7 +41,6 @@ NAME_TO_ZH = {
     "github-trending-report": "生成 GitHub 趨勢報告（每日追蹤）",
     "google-workspace": "Gmail、行事曆、雲端硬碟、通訊錄整合",
     "linear": "Linear 專案管理工作",
-    "make-health-monitor": "監控 Make.com 66 個 Scenario 健康狀態",
     "nano-pdf": "用自然語言指令編輯 PDF",
     "notion": "Notion API 建立和管理頁面、資料庫",
     "ocr-and-documents": "從 PDF 和掃描文件擷取文字",
@@ -99,14 +98,9 @@ NAME_TO_ZH = {
     "daily-automation": "日常自動化工作流程",
     "deep-research": "最大化資料收集的深入研究",
     "github-monitor": "監控 GitHub 倉庫動態（Issues、PR、Release）",
-    "make-monitor": "監控 Make.com Scenario 健康狀態",
-    "portfolio-update": "自動解析並更新持倉報告",
     "ppt-generator": "將講稿一鍵生成專業級 HTML 演示稿",
-    "quotation-generator": "生成報價單",
     "site-deploy": "透過 Cloudflare Tunnel 部署靜態網站",
-    "article-image-generator": "產生符合官網風格的 1:1 文章圖卡",
     "ui-ux-pro-max": "UI/UX 設計與實作（含設計系統）",
-    "weekly-content-series": "每週內容系列自動化",
 
     # autonomous-ai-agents
     "claude-code": "委託 Claude Code 處理編碼任務（Anthropic CLI agent）",
@@ -115,9 +109,6 @@ NAME_TO_ZH = {
 
     # smart-home
     "openhue": "透過 OpenHue API 控制 Philips Hue 照明",
-
-    # red-teaming
-    "godmode": "使用 G0DM0D3 技巧越獄 API 服務的 LLM",
 
     # software-development
     "plan": "Plan 模式：檢查上下文、寫 Markdown 計劃、委託 Claude Code 執行",

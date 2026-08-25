@@ -5,9 +5,9 @@ Usage:
   python3 generate.py "prompt" [--image URL ...] [--image-file PATH ...] [--size WxH] [--model NAME] [--outdir DIR]
 
 Notes:
-  - --image accepts public URL(s) or data:image/...;base64,... URI(s)
+  - --image accepts public HTTPS URL(s) or data:image/...;base64,... URI(s)
   - --image-file converts local files to Data URI Base64 before calling Agnes
-  - API key is read from AGNES_API_KEY or Hermes profile .env files; never print it
+  - API key is read from AGNES_API_KEY or the active Hermes home .env; never print it
 """
 
 import argparse
@@ -29,21 +29,17 @@ DEFAULT_OUTDIR = "/tmp/agnes-output"
 
 
 def get_api_key():
-    key = os.environ.get("AGNES_API_KEY")
-    if key and key.startswith("sk-"):
+    key = os.environ.get("AGNES_API_KEY", "").strip()
+    if key.startswith("sk-"):
         return key
 
     env_paths = []
-    # Active Hermes home (docker data dir, profile, or default)
     hh = os.environ.get("HERMES_HOME", "").strip()
+    isolated = os.environ.get("HERMES_TW_ISOLATED", "").strip().lower() in ("1", "true", "yes")
     if hh:
-        env_paths.append(Path(hh) / ".env")
-        env_paths.append(Path(hh) / "profiles" / "side" / ".env")
-    env_paths.extend([
-        Path.home() / ".hermes-demo" / ".env",
-        Path.home() / ".hermes/profiles/default/.env",
-        Path.home() / ".hermes/.env",
-    ])
+        env_paths.append(Path(hh).expanduser() / ".env")
+    if not isolated:
+        env_paths.append(Path.home() / ".hermes" / ".env")
     for p in env_paths:
         if not p.exists():
             continue
@@ -61,7 +57,6 @@ def file_to_data_uri(path):
         raise FileNotFoundError(f"image file not found: {p}")
     mime, _ = mimetypes.guess_type(str(p))
     if not mime or not mime.startswith("image/"):
-        # Agnes accepts common image data URIs; default to PNG for unknown image-like files.
         mime = "image/png"
     b64 = base64.b64encode(p.read_bytes()).decode("ascii")
     return f"data:{mime};base64,{b64}"
@@ -91,12 +86,18 @@ def call_api(prompt, model, size, image_inputs=None, output_format="url", timeou
             return json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"API error {e.code}: {body[:800]}")
+        raise RuntimeError(f"API error {e.code}: {body[:200]}")
+
+
+def _https_url(url: str) -> str:
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise RuntimeError("image URL must be https")
+    return url
 
 
 def save_result(result, outdir):
     if "data" not in result or not result["data"]:
-        raise RuntimeError(f"No image data in response: {json.dumps(result)[:500]}")
+        raise RuntimeError(f"No image data in response: {json.dumps(result)[:200]}")
 
     item = result["data"][0]
     out = Path(outdir)
@@ -104,20 +105,20 @@ def save_result(result, outdir):
     fpath = out / f"agnes_{int(time.time())}.png"
 
     if item.get("url"):
-        urllib.request.urlretrieve(item["url"], str(fpath))
+        urllib.request.urlretrieve(_https_url(item["url"]), str(fpath))
         return str(fpath)
 
     if item.get("b64_json"):
         fpath.write_bytes(base64.b64decode(item["b64_json"]))
         return str(fpath)
 
-    raise RuntimeError(f"No url or b64_json in response: {json.dumps(result)[:500]}")
+    raise RuntimeError(f"No url or b64_json in response: {json.dumps(result)[:200]}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Agnes AI free image generation")
     parser.add_argument("prompt", help="Text prompt for image generation or editing")
-    parser.add_argument("--image", nargs="*", default=[], help="Input public image URL(s) or Data URI(s) for img2img")
+    parser.add_argument("--image", nargs="*", default=[], help="Input public HTTPS image URL(s) or Data URI(s) for img2img")
     parser.add_argument("--image-file", nargs="*", default=[], help="Local image file(s); converted to Data URI for img2img")
     parser.add_argument("--size", default=DEFAULT_SIZE, help=f"Output size (default: {DEFAULT_SIZE})")
     parser.add_argument("--model", default=DEFAULT_MODEL, help=f"Model name (default: {DEFAULT_MODEL})")
@@ -125,7 +126,12 @@ def main():
     parser.add_argument("--format", choices=["url", "b64_json"], default="url", help="API response format")
     args = parser.parse_args()
 
-    image_inputs = list(args.image or [])
+    image_inputs = []
+    for u in args.image or []:
+        if u.startswith("data:image/"):
+            image_inputs.append(u)
+        else:
+            image_inputs.append(_https_url(u))
     image_inputs.extend(file_to_data_uri(p) for p in (args.image_file or []))
 
     print(f"Generating via Agnes: {args.prompt[:90]}...")

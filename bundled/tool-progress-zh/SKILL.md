@@ -33,10 +33,9 @@ python3 - <<'PY'
 import os, sys
 from pathlib import Path
 os.environ.setdefault("HERMES_HOME", str(Path.home()/".hermes"))
+home = Path(os.environ["HERMES_HOME"])
 for p in [
-    Path.home()/".hermes"/"hermes-agent",
-    Path("/opt/hermes"),
-    Path("/opt/hermes/hermes-agent"),
+    home/"hermes-agent",
 ]:
     if (p/"agent"/"display.py").exists():
         sys.path.insert(0, str(p)); break

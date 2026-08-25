@@ -35,6 +35,8 @@
 - **金鑰與通道管理**（2026-08-23 定案）：金鑰單一來源、變數只增不改名、通道禁混用（SKILL 七之二）
 - **Chrome 分頁衛生**（2026-08-22 定案）：分頁用完必關、任務鎖不關（SKILL 七之三）
 - **工具回報 ≠ 事實**：寄信／發布／寫入後驗證落庫或讀端，才宣稱完成（DELIVERY_QA 第 5 節）
+- 可先在測試目錄套用，確認沒問題再裝到正在用的環境
+- 預裝技能與套件鎖定版本，同一發行裝出來會一樣（見 `references/PINNED_SOURCES.md`）
 
 更早版本摘要見下方 [Changelog](#changelog)。
 
@@ -43,7 +45,7 @@
 ## Requirements
 
 - 已安裝 [Hermes Agent](https://github.com/NousResearch/hermes-agent)（建議 **v0.20+**，表格／rich 行為與此基線一致）
-- Python 3，以及 `PyYAML`
+- Python 3，以及 `PyYAML>=6.0.1,<7`
 - 可選：Docker（隔離驗證）、Chrome／Chromium（DevTools／CDP）
 - apply 時需可連 GitHub／Skills Hub（無網路時仍可套用設定與 `bundled/`，但 Hub 與 Superpowers 會略過）
 
@@ -59,7 +61,7 @@ git clone --branch v1.3.0 \
   https://github.com/s94084sammy/hermes-tw-setup.git \
   ~/.hermes/skills/hermes-tw-setup
 
-pip install --user pyyaml
+pip install --user 'PyYAML>=6.0.1,<7'
 ```
 
 已有本機目錄時升級：
@@ -86,13 +88,11 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes
 # 改完設定後務必重啟 gateway，Telegram rich／streaming／繁中進度才會生效
 ```
 
-隔離環境（可選）：
+想先試裝、不動正在用的環境（可選）：
 
 ```bash
-python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check \
-  --docker <container> --docker-data ~/.hermes-test
 python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
-  --docker <container> --docker-data ~/.hermes-test --yes
+  --hermes-home /tmp/hermes-tw-test --yes
 ```
 
 完整操作說明：
@@ -172,7 +172,7 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 
 ## Dependency model
 
-**No author-machine skill library required.** Install this repo from GitHub, then `apply` pulls remaining pieces over the network (Hermes Hub + git). See [`references/NETWORK_SOURCES.md`](references/NETWORK_SOURCES.md).
+**No author-machine skill library required.** Install this repo from GitHub, then `apply` pulls remaining pieces over the network at **pinned** git commits (see [`references/PINNED_SOURCES.md`](references/PINNED_SOURCES.md)).
 
 ## Bundled companion skills
 
@@ -183,17 +183,19 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 | `bundled/telegram-commands-zh` | Telegram 選單繁中 |
 | `bundled/tool-progress-zh` | 工具進度氣泡繁中（改部署端 display.py） |
 | `bundled/agnes-image-generation` | Agnes 免費生圖 |
-| Superpowers | apply 時自 GitHub `obra/superpowers` clone（未內嵌以控制體積） |
+| Superpowers | apply 時自 GitHub `obra/superpowers` 釘 tag clone（未內嵌以控制體積） |
 
-Office／frontend 技能優先 Hub 或本機 Hermes 安裝樹副本（**不是**作者機器）。
+Office／frontend 技能從釘版 `anthropics/skills` 複製（不是作者機器、也不是未釘的 Hub）。
 
 ## Repository layout
 
 ```text
 SKILL.md                      Agent 可載入之技能規格
 scripts/baseline.py           check / apply 實作
+scripts/test_isolation.py     測試目錄套用時，正在用的安裝維持原樣
 bundled/                      隨包附屬技能與補丁（不靠作者本機）
 references/
+  PINNED_SOURCES.md           第三方釘版清單
   MANUAL_STEPS.md             部署手冊
   TELEGRAM_RICH.md            表格／rich／streaming／三層驗證＋紅線細節
   WRITING_ZH.md               對外中文文案下限
@@ -229,7 +231,7 @@ README.md
 
 ### [v1.3.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.3.0) — 2026-08-25（**Latest**）
 
-表格紅線細節（2026-08-24 定案）、視覺 QA 檔位紅線、對外中文文案下限（`WRITING_ZH.md`）、多 agent 共同規則（`MULTI_AGENT_RULES.md`）、金鑰與通道管理、Chrome 分頁衛生、工具回報 ≠ 事實驗證原則。
+表格紅線細節（2026-08-24 定案）、視覺 QA 檔位紅線、對外中文文案下限（`WRITING_ZH.md`）、多 agent 共同規則（`MULTI_AGENT_RULES.md`）、金鑰與通道管理、Chrome 分頁衛生、工具回報 ≠ 事實驗證原則。可先在測試目錄套用；預裝來源鎖定版本。
 
 ### [v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0) — 2026-08-11
 

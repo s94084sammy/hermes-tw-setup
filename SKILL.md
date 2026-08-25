@@ -45,7 +45,7 @@ description: >
 
 ```bash
 git clone https://github.com/s94084sammy/hermes-tw-setup.git ~/.hermes/skills/hermes-tw-setup
-pip install --user pyyaml
+pip install --user 'PyYAML>=6.0.1,<7'
 ```
 
 ### 腳本（建議先跑）
@@ -54,9 +54,10 @@ pip install --user pyyaml
 # 只檢查（本機 ~/.hermes）
 python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check
 
-# 可選：隔離測試（Docker 容器 + 獨立資料目錄，不動正式 ~/.hermes）
-python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check --docker <容器名> --docker-data ~/.hermes-test
-python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --docker <容器名> --docker-data ~/.hermes-test --yes
+# 可選：隔離測試（獨立家目錄，不改正式 ~/.hermes 的上游原始碼與閘道自啟）
+python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py check --hermes-home /tmp/hermes-tw-test
+python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --hermes-home /tmp/hermes-tw-test --yes
+# Docker：再加 --docker <容器名> --docker-data <獨立資料目錄>
 
 # 正式本機套用（需 --yes）
 python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes
@@ -276,7 +277,7 @@ fallback_providers:
 
 ### Chrome DevTools MCP（必做）
 
-1. 安裝並寫入 `mcp_servers`（`chrome-devtools-mcp@latest` + browserUrl／autoConnect）  
+1. 安裝並寫入 `mcp_servers`（釘版 `chrome-devtools-mcp@1.7.0` + browserUrl／autoConnect）  
 2. 確保瀏覽器以除錯埠執行  
 3. `hermes mcp test`（或等價）通過  
 4. SOUL：瀏覽器任務優先用此 MCP；**速度與成功率優先**，不墨守成規  
@@ -315,22 +316,22 @@ fallback_providers:
 
 常駐 Chrome（CDP）可用，但要控制資源：
 
-- **分頁用完必關**：批次任務開了一堆 tab，用完關掉；有清理腳本就用（如 `chrome-tab-janitor.py` 一類）
-- **任務鎖**：進行中任務先放鎖檔（如 `~/.claude/shared/locks/chrome-company.lock`）；**有鎖不關**
-- 公司／個人瀏覽器分離：公司資源用公司 profile（如 9223），個人用個人 profile（如 9222），不混用
+- **分頁用完必關**：批次任務開了一堆分頁，用完關掉
+- **任務鎖**：進行中任務先放鎖檔；**有鎖不關**分頁
+- 多個瀏覽器設定檔要分開（工作／私人），不要混用同一個除錯埠
 
 ## 七之四、對外中文文案下限（2026-08 定案）
 
-- **對外中文文案一律由中文母語模型撰寫、修改或擴寫**（現階段 DeepSeek V4 Flash；自己不准硬寫、不准自己定稿）
+- **對外中文文案一律由中文母語模型撰寫、修改或擴寫**（自己不准硬寫、不准自己定稿）
 - 交付物禁寫作術語（起承轉合等）、中文破折號、AI 排比
 - 溝通習慣：結論先講、完整詞句、數字用阿拉伯數字、三段式回報
-- 詳見 `references/WRITING_ZH.md`（含 DeepSeek thinking 實務坑）
+- 詳見 `references/WRITING_ZH.md`
 
 ## 七之五、多 Agent 共同規則（2026-08 實戰）
 
 跑多個 Hermes profile 的團隊：
 
-- 共同規則**單一來源**（短核＋索引＋正文），個人 MEMORY 只留角色專屬
+- 共同規則**單一來源**（短核＋索引＋正文），個人記憶只留角色專屬
 - 開工只帶短核＋索引，**按需載入**正文，不整包重讀
 - 使用者說「以後不要再犯」→ 當天寫入記憶，隔日蒸餾進共同檔；不另開第二套檔
 - 詳見 `references/MULTI_AGENT_RULES.md`

@@ -41,6 +41,162 @@ VOICE_CHOICES = {
     "male": "zh-TW-YunJheNeural",
 }
 
+# Pinned third-party sources. Do not float to latest. Keep in sync with
+# references/PINNED_SOURCES.md
+PYYAML_SPEC = "PyYAML>=6.0.1,<7"
+CHROME_DEVTOOLS_MCP = "chrome-devtools-mcp@1.7.0"
+SUPERPOWERS_REPO = "https://github.com/obra/superpowers.git"
+SUPERPOWERS_TAG = "v4.1.1"
+SUPERPOWERS_REF = "469a6d81ebb8b827e284d4afb090c6c622d97747"
+ANTHROPICS_SKILLS_REPO = "https://github.com/anthropics/skills.git"
+ANTHROPICS_SKILLS_REF = "3b3fad96af16a10759d930941b4520ba0c40edae"
+
+_ANTHROPICS_TREE: Optional[Path] = None
+
+
+def live_home() -> Path:
+    return (Path.home() / ".hermes").expanduser().resolve()
+
+
+def isolated() -> bool:
+    """True when the target home is not the live ~/.hermes, or Docker mode."""
+    try:
+        return HERMES_HOME.expanduser().resolve() != live_home() or bool(DOCKER_CONTAINER)
+    except Exception:
+        return True
+
+
+def bind_env(extra: Optional[dict[str, str]] = None) -> dict[str, str]:
+    env = {**os.environ, "HERMES_HOME": str(HERMES_HOME)}
+    if isolated():
+        env["HERMES_TW_ISOLATED"] = "1"
+    if extra:
+        env.update(extra)
+    return env
+
+
+def under_target_home(path: Path) -> bool:
+    try:
+        path.expanduser().resolve().relative_to(HERMES_HOME.expanduser().resolve())
+        return True
+    except Exception:
+        return False
+
+
+def safe_copytree(src: Path, dst: Path) -> None:
+    """Copy a tree; skip symlinks that point outside src (zip-slip / clone tricks)."""
+    src = src.resolve()
+
+    def ignore(directory: str, names: list[str]) -> list[str]:
+        skip: list[str] = []
+        d = Path(directory)
+        for n in names:
+            p = d / n
+            if not p.is_symlink():
+                continue
+            try:
+                p.resolve().relative_to(src)
+            except Exception:
+                skip.append(n)
+        return skip
+
+    if dst.exists():
+        shutil.rmtree(dst)
+    shutil.copytree(src, dst, symlinks=False, ignore=ignore)
+
+
+def git_clone_pinned(url: str, dest: Path, *, ref: str, tag: str = "") -> subprocess.CompletedProcess:
+    """Clone a repo at a pinned tag/SHA. Refuse to proceed on mismatch."""
+    if dest.exists():
+        shutil.rmtree(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if tag:
+        r = subprocess.run(
+            ["git", "clone", "--depth", "1", "--branch", tag, url, str(dest)],
+            capture_output=True,
+            text=True,
+            timeout=180,
+        )
+        if r.returncode == 0:
+            head = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=dest,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            got = (head.stdout or "").strip()
+            if got == ref or got.startswith(ref) or ref.startswith(got):
+                return r
+            shutil.rmtree(dest, ignore_errors=True)
+            r = subprocess.CompletedProcess(
+                r.args,
+                1,
+                r.stdout,
+                (r.stderr or "") + f"\nPIN_MISMATCH expected={ref} got={got}",
+            )
+            return r
+    dest.mkdir(parents=True, exist_ok=True)
+    subprocess.run(["git", "init"], cwd=dest, capture_output=True, text=True, timeout=30)
+    subprocess.run(
+        ["git", "remote", "add", "origin", url],
+        cwd=dest,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    r = subprocess.run(
+        ["git", "fetch", "--depth", "1", "origin", ref],
+        cwd=dest,
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if r.returncode != 0:
+        return r
+    return subprocess.run(
+        ["git", "checkout", "--force", "FETCH_HEAD"],
+        cwd=dest,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+
+def anthropics_skills_tree() -> Optional[Path]:
+    global _ANTHROPICS_TREE
+    if _ANTHROPICS_TREE and (_ANTHROPICS_TREE / "skills").is_dir():
+        return _ANTHROPICS_TREE
+    dest = Path(f"/tmp/hermes-tw-anthropics-skills-{ANTHROPICS_SKILLS_REF[:12]}")
+    marker = dest / ".hermes-tw-pin"
+    if dest.is_dir() and (dest / "skills").is_dir() and marker.exists() and marker.read_text().strip() == ANTHROPICS_SKILLS_REF:
+        _ANTHROPICS_TREE = dest
+        return dest
+    r = git_clone_pinned(ANTHROPICS_SKILLS_REPO, dest, ref=ANTHROPICS_SKILLS_REF)
+    if r.returncode != 0:
+        return None
+    if not (dest / "skills").is_dir():
+        return None
+    marker.write_text(ANTHROPICS_SKILLS_REF, encoding="utf-8")
+    _ANTHROPICS_TREE = dest
+    return dest
+
+
+def install_pinned_anthropic_skill(home: Path, folder_name: str) -> str:
+    tree = anthropics_skills_tree()
+    if not tree:
+        return (
+            f"釘版 anthropics/skills@{ANTHROPICS_SKILLS_REF[:12]} 取得失敗；"
+            f"不回落到未釘版本的 Hub"
+        )
+    src = tree / "skills" / folder_name
+    if not (src / "SKILL.md").is_file():
+        return f"釘版樹沒有 skills/{folder_name}/SKILL.md"
+    dst = skills_dir_for_home(home) / folder_name
+    skills_dir_for_home(home).mkdir(parents=True, exist_ok=True)
+    safe_copytree(src, dst)
+    return f"已安裝 {folder_name} ← anthropics/skills@{ANTHROPICS_SKILLS_REF[:12]}"
+
 
 @dataclass
 class Item:
@@ -71,7 +227,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     if yaml is None:
-        raise SystemExit("需要 PyYAML：pip install pyyaml")
+        raise SystemExit(f"需要 PyYAML：pip install '{PYYAML_SPEC}'")
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(data, dict):
         return {}
@@ -80,7 +236,7 @@ def load_yaml(path: Path) -> dict[str, Any]:
 
 def write_yaml(path: Path, data: dict[str, Any]) -> None:
     if yaml is None:
-        raise SystemExit("需要 PyYAML：pip install pyyaml")
+        raise SystemExit(f"需要 PyYAML：pip install '{PYYAML_SPEC}'")
     path.parent.mkdir(parents=True, exist_ok=True)
     # preserve nothing fancy; dump unicode
     text = yaml.safe_dump(
@@ -191,9 +347,6 @@ def anysearch_provider_allows_anonymous() -> Optional[bool]:
     else:
         prov = HERMES_HOME / "hermes-agent" / "plugins" / "web" / "anysearch" / "provider.py"
         if not prov.exists():
-            alt = Path.home() / ".hermes" / "hermes-agent" / "plugins" / "web" / "anysearch" / "provider.py"
-            prov = alt if alt.exists() else prov
-        if not prov.exists():
             return None
         text = prov.read_text(encoding="utf-8", errors="replace")
     if "HERMES_TW_ANONYMOUS_ANYSEARCH" in text:
@@ -218,10 +371,6 @@ def commands_py_has_zh() -> Optional[bool]:
         except Exception:
             return None
     p = HERMES_HOME / "hermes-agent" / "hermes_cli" / "commands.py"
-    if not p.exists():
-        # host install path often next to data
-        p2 = Path.home() / ".hermes" / "hermes-agent" / "hermes_cli" / "commands.py"
-        p = p2 if p2.exists() else p
     if not p.exists():
         return None
     t = p.read_text(encoding="utf-8", errors="replace")
@@ -332,10 +481,11 @@ def check_profile(label: str, home: Path, is_side: bool) -> list[Item]:
         if isinstance(ext, list):
             allowed = {
                 str(HERMES_HOME / "skills").rstrip("/"),
-                "~/.hermes/skills",
-                str(Path.home() / ".hermes" / "skills").rstrip("/"),
                 "/opt/data/skills",
             }
+            if not isolated():
+                allowed.add("~/.hermes/skills")
+                allowed.add(str(live_home() / "skills").rstrip("/"))
             for e in ext:
                 es = str(e).replace(chr(92), "/").rstrip("/")
                 if es in allowed or es.endswith("/.hermes/skills") or es.endswith("/opt/data/skills"):
@@ -379,13 +529,32 @@ def check_profile(label: str, home: Path, is_side: bool) -> list[Item]:
         )
     )
 
+    has_tok = env_has_key(env_path, "TELEGRAM_BOT_TOKEN") or env_has_key(
+        env_path, "TELEGRAM_BOT_TOKEN_DEFAULT"
+    )
     items.append(
         Item(
             id=f"{label}.telegram_token",
             title=f"{label} Telegram bot token",
-            ok=env_has_key(env_path, "TELEGRAM_BOT_TOKEN")
-            or env_has_key(env_path, "TELEGRAM_BOT_TOKEN_DEFAULT"),
-            detail="已設定" if (env_has_key(env_path, "TELEGRAM_BOT_TOKEN") or env_has_key(env_path, "TELEGRAM_BOT_TOKEN_DEFAULT")) else "未設定",
+            ok=has_tok,
+            detail="已設定" if has_tok else "未設定",
+            fixable=False,
+            level="warn",
+        )
+    )
+    has_allow = env_has_key(env_path, "TELEGRAM_ALLOWED_USERS") or env_has_key(
+        env_path, "TELEGRAM_ALLOWLIST"
+    )
+    items.append(
+        Item(
+            id=f"{label}.telegram_allowlist",
+            title=f"{label} Telegram 允許清單或配對碼",
+            ok=has_allow or not has_tok,
+            detail=(
+                "已設 TELEGRAM_ALLOWED_USERS"
+                if has_allow
+                else "未設允許清單；上游預設拒絕未知使用者並走配對碼，請確認你懂這層，不要以為有 token 就全開"
+            ),
             fixable=False,
             level="warn",
         )
@@ -469,10 +638,7 @@ def copy_skill_into(home: Path, name: str) -> str:
         return f"找不到來源 skill：{name}"
     dst = skills_dir_for_home(home) / name
     skills_dir_for_home(home).mkdir(parents=True, exist_ok=True)
-    if dst.exists():
-        # refresh content
-        shutil.rmtree(dst)
-    shutil.copytree(src, dst, symlinks=True)
+    safe_copytree(src, dst)
     return f"已安裝／更新 {name} → {dst}"
 
 
@@ -504,7 +670,7 @@ def ensure_duckduckgo(home: Path) -> list[str]:
             capture_output=True,
             text=True,
             timeout=120,
-            env={**os.environ, "HERMES_HOME": str(home)},
+            env=bind_env(),
         )
         notes.append(f"repair-official duckduckgo-search → {r.returncode}")
         if (r.stdout or r.stderr):
@@ -721,39 +887,21 @@ def office_skill_present(skills_root: Path, names: tuple) -> bool:
 
 
 def host_productivity_skill(name: str) -> Optional[Path]:
-    base = Path.home() / ".hermes" / "hermes-agent" / "skills" / "productivity" / name
+    if isolated():
+        return None
+    base = live_home() / "hermes-agent" / "skills" / "productivity" / name
     if base.is_dir() and (base / "SKILL.md").exists():
         return base
-    # container copy out not here
     return None
 
 
 def install_hub_skill(home: Path, identifier: str) -> str:
     if not identifier:
         return "無 hub id"
-    if DOCKER_CONTAINER:
-        try:
-            r = docker_exec(
-                ["hermes", "skills", "install", identifier, "--yes"],
-                timeout=180,
-            )
-            return f"hub install {identifier} → {r.returncode} {((r.stdout or '') + (r.stderr or ''))[:200]}"
-        except Exception as e:
-            return f"hub install 失敗：{e}"
-    hermes = shutil.which("hermes")
-    if not hermes:
-        return "無 hermes 指令"
-    try:
-        r = subprocess.run(
-            [hermes, "skills", "install", identifier, "--yes"],
-            capture_output=True,
-            text=True,
-            timeout=180,
-            env={**os.environ, "HERMES_HOME": str(home)},
-        )
-        return f"hub install {identifier} → {r.returncode}"
-    except Exception as e:
-        return str(e)
+    folder = identifier.rstrip("/").split("/")[-1]
+    if "anthropics/skills" in identifier.replace("\\", "/"):
+        return install_pinned_anthropic_skill(home, folder)
+    return f"拒絕未釘版本來源：{identifier}"
 
 
 def ensure_office_skills(home: Path) -> list[str]:
@@ -778,9 +926,7 @@ def ensure_office_skills(home: Path) -> list[str]:
             src = host_productivity_skill(name)
             if src:
                 dst = skills_root / name
-                if dst.exists():
-                    shutil.rmtree(dst)
-                shutil.copytree(src, dst, symlinks=True)
+                safe_copytree(src, dst)
                 notes.append(f"Office {cap}: 自本機 Hermes 安裝 productivity 複製 {name}")
                 copied = True
                 break
@@ -847,11 +993,9 @@ def ensure_agnes_image(home: Path) -> list[str]:
         )
         return notes
     dst = skills_root / "agnes-image-generation"
-    if dst.exists():
-        shutil.rmtree(dst)
-    shutil.copytree(src, dst, symlinks=True)
+    safe_copytree(src, dst)
     notes.append(f"已安裝 agnes-image-generation → {dst}")
-    # soft rewrite SKILL paths: company-only lines stay but add HERMES_HOME note
+    # rewrite SKILL key hint to the active home only
     skill_md = dst / "SKILL.md"
     if skill_md.exists():
         body = skill_md.read_text(encoding="utf-8", errors="replace")
@@ -934,20 +1078,14 @@ def ensure_frontend_image_skills(home: Path) -> list[str]:
             notes.append(install_hub_skill(home, hub))
             if skill_names_present(skills_root, meta["names"]):
                 continue
-        # Fallback: Hermes product tree on **this** install (bundled with Hermes)
-        for name in meta["names"]:
-            for base in (
-                Path.home() / ".hermes" / "hermes-agent" / "skills" / "creative" / name,
-            ):
+        if not isolated():
+            for name in meta["names"]:
+                base = live_home() / "hermes-agent" / "skills" / "creative" / name
                 if base.is_dir() and (base / "SKILL.md").exists():
                     dst = skills_root / name
-                    if dst.exists():
-                        shutil.rmtree(dst)
-                    shutil.copytree(base, dst, symlinks=True)
+                    safe_copytree(base, dst)
                     notes.append(f"前端生圖 {key}: 自本機 Hermes creative/{name} 複製")
                     break
-            if skill_names_present(skills_root, meta["names"]):
-                break
         if DOCKER_CONTAINER and not skill_names_present(skills_root, meta["names"]):
             for name in meta["names"]:
                 cand = f"/opt/hermes/skills/creative/{name}"
@@ -967,7 +1105,7 @@ def ensure_frontend_image_skills(home: Path) -> list[str]:
                     notes.append(f"容器複製 {name} 失敗: {e}")
         if not skill_names_present(skills_root, meta["names"]):
             notes.append(
-                f"前端生圖 {key}: 仍缺；請確認網路可 `hermes skills install {hub}`"
+                f"前端生圖 {key}: 仍缺；需要網路取得釘版 anthropics/skills@{ANTHROPICS_SKILLS_REF[:12]}"
             )
     return notes
 
@@ -1012,24 +1150,17 @@ def ensure_superpowers(home: Path) -> list[str]:
         notes.append("使用套件 bundled/superpowers")
 
     if not src:
-        tmp = Path("/tmp/hermes-tw-superpowers-src")
+        tmp = Path(f"/tmp/hermes-tw-superpowers-{SUPERPOWERS_REF[:12]}")
         try:
-            if tmp.exists():
-                shutil.rmtree(tmp)
-            r = subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "--depth",
-                    "1",
-                    "https://github.com/obra/superpowers.git",
-                    str(tmp),
-                ],
-                capture_output=True,
-                text=True,
-                timeout=180,
+            r = git_clone_pinned(
+                SUPERPOWERS_REPO,
+                tmp,
+                ref=SUPERPOWERS_REF,
+                tag=SUPERPOWERS_TAG,
             )
-            notes.append(f"git clone https://github.com/obra/superpowers → code={r.returncode}")
+            notes.append(
+                f"git clone {SUPERPOWERS_REPO} @{SUPERPOWERS_TAG} ({SUPERPOWERS_REF[:12]}) → code={r.returncode}"
+            )
             if r.returncode != 0:
                 notes.append(((r.stderr or r.stdout or "")[:300]))
             elif (tmp / "skills" / "using-superpowers" / "SKILL.md").exists():
@@ -1048,10 +1179,8 @@ def ensure_superpowers(home: Path) -> list[str]:
             "Superpowers 安裝失敗：需要網路 git 存取 https://github.com/obra/superpowers"
         )
         return notes
-    if dst.exists():
-        shutil.rmtree(dst)
-    shutil.copytree(src, dst, symlinks=True)
-    notes.append(f"已安裝 Superpowers 技能包 → {dst}")
+    safe_copytree(src, dst)
+    notes.append(f"已安裝 Superpowers 技能包 @{SUPERPOWERS_TAG} → {dst}")
     return notes
 
 
@@ -1272,24 +1401,31 @@ def tool_progress_zh_present() -> bool:
     """True if agent/display.py has TW tool-progress verbs patch."""
     candidates = [
         HERMES_HOME / "hermes-agent" / "agent" / "display.py",
-        Path.home() / ".hermes" / "hermes-agent" / "agent" / "display.py",
-        Path("/opt/hermes/agent/display.py"),
-        Path("/opt/hermes/hermes-agent/agent/display.py"),
     ]
-    try:
-        import agent.display as ad  # type: ignore
+    if not isolated():
+        candidates.extend(
+            [
+                live_home() / "hermes-agent" / "agent" / "display.py",
+                Path("/opt/hermes/agent/display.py"),
+                Path("/opt/hermes/hermes-agent/agent/display.py"),
+            ]
+        )
+        try:
+            import agent.display as ad  # type: ignore
 
-        candidates.insert(0, Path(ad.__file__).resolve())
-    except Exception:
-        pass
-    try:
-        import hermes_cli  # type: ignore
+            candidates.insert(0, Path(ad.__file__).resolve())
+        except Exception:
+            pass
+        try:
+            import hermes_cli  # type: ignore
 
-        candidates.insert(0, Path(hermes_cli.__file__).resolve().parent.parent / "agent" / "display.py")
-    except Exception:
-        pass
+            candidates.insert(0, Path(hermes_cli.__file__).resolve().parent.parent / "agent" / "display.py")
+        except Exception:
+            pass
     for p in candidates:
         try:
+            if isolated() and not under_target_home(p):
+                continue
             if p.is_file() and "_TOOL_VERBS_ZH_HANT" in p.read_text(encoding="utf-8", errors="ignore"):
                 return True
         except Exception:
@@ -1311,7 +1447,7 @@ def check_tool_progress_zh(label: str = "host") -> list[Item]:
 
 
 def check_behavioral_docs() -> list[Item]:
-    """v1.3.0：行為規範文件在位（表格紅線、文案下限、多 agent 規則、視覺 QA／驗證）。"""
+    """行為規範文件在位（表格紅線、文案下限、多 agent 規則、視覺 QA／驗證）。"""
     refs = SKILL_ROOT / "references"
     docs = [
         ("WRITING_ZH.md", "對外中文文案下限（WRITING_ZH.md）"),
@@ -1327,7 +1463,7 @@ def check_behavioral_docs() -> list[Item]:
         if fn == "TELEGRAM_RICH.md" and ok and "2026-08-24" not in path.read_text(encoding="utf-8", errors="ignore"):
             ok = False
             extra = "缺 2026-08-24 紅線章節"
-        detail = "在位" if ok else (extra or f"缺 {fn}；請升級 repo 到 v1.3.0")
+        detail = "在位" if ok else (extra or f"缺 {fn}；請升級本技能到最新發行")
         items.append(
             Item(
                 id=f"docs.{fn.replace('.md', '')}",
@@ -1336,7 +1472,7 @@ def check_behavioral_docs() -> list[Item]:
                 detail=detail,
                 fixable=True,
                 level="warn",
-                fix_hint=f"升級技能目錄：cd {SKILL_ROOT} && git fetch --tags && git checkout v1.3.0",
+                fix_hint=f"升級技能目錄：cd {SKILL_ROOT} && git fetch --tags && git checkout $(git describe --tags --abbrev=0 origin/main 2>/dev/null || echo main)",
             )
         )
     return items
@@ -1357,6 +1493,11 @@ def apply_tool_progress_zh() -> list[str]:
         if script:
             notes.append(f"本機可見腳本 {script}（未對容器自動執行）")
         return notes
+    if isolated():
+        target = HERMES_HOME / "hermes-agent" / "agent" / "display.py"
+        if not target.is_file():
+            notes.append("隔離家目錄沒有上游 display.py，略過進度補丁（不改正式安裝）")
+            return notes
     if not script:
         notes.append("找不到 bundled/tool-progress-zh/apply_patch.py")
         return notes
@@ -1366,6 +1507,7 @@ def apply_tool_progress_zh() -> list[str]:
             capture_output=True,
             text=True,
             timeout=60,
+            env=bind_env(),
         )
         notes.append(f"tool-progress-zh → code={r.returncode}")
         out = (r.stdout or "") + (r.stderr or "")
@@ -1466,6 +1608,18 @@ def run_check() -> Report:
             title="HERMES_HOME",
             ok=HERMES_HOME.is_dir(),
             detail=str(HERMES_HOME),
+        )
+    )
+    r.add(
+        Item(
+            id="host.isolation",
+            title="家目錄隔離狀態",
+            ok=True,
+            detail=(
+                f"測試目錄 {HERMES_HOME}（只寫這裡）"
+                if isolated()
+                else f"家目錄 {HERMES_HOME}"
+            ),
         )
     )
 
@@ -1712,11 +1866,9 @@ def default_fix_hints() -> dict[str, str]:
             f"主：{hh}/.env  副：{side}/.env"
         ),
         "default.skills.superpowers": (
-            "需要網路：apply 會 git clone https://github.com/obra/superpowers\n"
-            "手動：\n"
-            "  git clone --depth 1 https://github.com/obra/superpowers /tmp/superpowers\n"
-            f"  mkdir -p {hh}/skills && cp -a /tmp/superpowers/skills {hh}/skills/superpowers\n"
-            "  或：python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes\n"
+            f"需要網路：apply 會 git clone {SUPERPOWERS_REPO} --branch {SUPERPOWERS_TAG}（釘 {SUPERPOWERS_REF}）\n"
+            "手動請用同一 tag／同一提交，不要 clone 預設分支頭\n"
+            f"  或：python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply --yes\n"
             "不依賴作者本機 skill 目錄"
         ),
         "default.telegram.streaming_off": (
@@ -1910,7 +2062,7 @@ def patch_config_baseline(home: Path, is_side: bool) -> list[str]:
         mcp["chrome-devtools"] = {
             "command": "npx",
             "args": [
-                "chrome-devtools-mcp@latest",
+                CHROME_DEVTOOLS_MCP,
                 "--browserUrl",
                 "http://127.0.0.1:9222",
             ],
@@ -1961,6 +2113,7 @@ def create_side_profile() -> list[str]:
             capture_output=True,
             text=True,
             timeout=120,
+            env=bind_env(),
         )
         notes.append(f"hermes profile create side --clone → code={r.returncode}")
         if r.stdout:
@@ -2021,10 +2174,9 @@ def patch_anysearch_anonymous() -> list[str]:
     else:
         prov = HERMES_HOME / "hermes-agent" / "plugins" / "web" / "anysearch" / "provider.py"
         if not prov.exists():
-            alt = Path.home() / ".hermes" / "hermes-agent" / "plugins" / "web" / "anysearch" / "provider.py"
-            prov = alt if alt.exists() else prov
-        if not prov.exists():
-            notes.append(f"找不到 {prov}")
+            notes.append(
+                f"找不到 {prov}；隔離家目錄不回落到正式安裝，略過 AnySearch 補丁"
+            )
             return notes
 
     text = prov.read_text(encoding="utf-8")
@@ -2141,6 +2293,11 @@ def apply_telegram_zh() -> list[str]:
         if script:
             notes.append(f"本機可見腳本 {script}（未對容器自動執行）")
         return notes
+    if isolated():
+        target = HERMES_HOME / "hermes-agent" / "hermes_cli" / "commands.py"
+        if not target.is_file():
+            notes.append("隔離家目錄沒有上游 commands.py，略過選單補丁（不改正式安裝）")
+            return notes
     if not script:
         notes.append("找不到 telegram-commands-zh/apply_patch.py")
         return notes
@@ -2150,6 +2307,7 @@ def apply_telegram_zh() -> list[str]:
             capture_output=True,
             text=True,
             timeout=60,
+            env=bind_env(),
         )
         notes.append(f"telegram-commands-zh → code={r.returncode}")
         out = (r.stdout or "") + (r.stderr or "")
@@ -2164,6 +2322,8 @@ def apply_linux_gateway_enable() -> list[str]:
     notes: list[str] = []
     if DOCKER_CONTAINER:
         return [f"Docker 模式（{DOCKER_CONTAINER}）：略過 host systemd"]
+    if isolated():
+        return ["隔離家目錄：略過本機閘道自啟（不啟用正式 hermes-gateway）"]
     if detect_os() != "linux":
         return ["非 Linux，略過 systemd"]
     try:
@@ -2183,8 +2343,12 @@ def apply_linux_gateway_enable() -> list[str]:
 
 def run_apply(yes: bool) -> None:
     print("=== hermes-tw-setup apply ===")
+    print(f"HERMES_HOME={HERMES_HOME}")
+    if isolated():
+        print("測試目錄：設定只寫進這個家目錄。")
+    print(f"預裝鎖定：Superpowers {SUPERPOWERS_TAG}、anthropics/skills {ANTHROPICS_SKILLS_REF[:12]}、{CHROME_DEVTOOLS_MCP}、{PYYAML_SPEC}")
     if not yes:
-        print("將執行安全套用（建立 side、config、SOUL/MEMORY、anysearch 匿名補丁、繁中選單等）。")
+        print("將套用基線（建立 side、config、SOUL/MEMORY、anysearch 匿名補丁、繁中選單等）。")
         print("不會自動改 macOS/Windows 電源；Linux 休眠策略僅報告、不強制 mask。")
         print("繼續請加 --yes")
         return
@@ -2359,6 +2523,11 @@ def main() -> None:
             except Exception:
                 HERMES_HOME = Path.home() / f".{DOCKER_CONTAINER}"
     SIDE_HOME = HERMES_HOME / "profiles" / SIDE_NAME
+    os.environ["HERMES_HOME"] = str(HERMES_HOME)
+    if isolated():
+        os.environ["HERMES_TW_ISOLATED"] = "1"
+    else:
+        os.environ.pop("HERMES_TW_ISOLATED", None)
 
     if args.command == "check":
         report = run_check()

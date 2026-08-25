@@ -113,24 +113,38 @@ COMMANDS_ZH = {
 def _find_commands_py() -> str:
     import os
     from pathlib import Path
-    env_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
+
+    env_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser().resolve()
+    live = (Path.home() / ".hermes").expanduser().resolve()
+    isolated = os.environ.get("HERMES_TW_ISOLATED", "").strip() in ("1", "true", "yes") or env_home != live
     candidates = [
         env_home / "hermes-agent" / "hermes_cli" / "commands.py",
-        Path.home() / ".hermes" / "hermes-agent" / "hermes_cli" / "commands.py",
-        Path("/opt/hermes/hermes_cli/commands.py"),
-        Path("/opt/hermes/hermes-agent/hermes_cli/commands.py"),
     ]
-    # sibling of installed hermes package
-    try:
-        import hermes_cli
-        candidates.insert(0, Path(hermes_cli.__file__).resolve().parent / "commands.py")
-    except Exception:
-        pass
+    if not isolated:
+        candidates.extend(
+            [
+                live / "hermes-agent" / "hermes_cli" / "commands.py",
+                Path("/opt/hermes/hermes_cli/commands.py"),
+                Path("/opt/hermes/hermes-agent/hermes_cli/commands.py"),
+            ]
+        )
+        try:
+            import hermes_cli
+
+            candidates.insert(0, Path(hermes_cli.__file__).resolve().parent / "commands.py")
+        except Exception:
+            pass
     for c in candidates:
-        if c.is_file():
-            return str(c)
+        if not c.is_file():
+            continue
+        if isolated:
+            try:
+                c.resolve().relative_to(env_home)
+            except Exception:
+                continue
+        return str(c)
     raise FileNotFoundError(
-        "找不到 hermes_cli/commands.py；請設定 HERMES_HOME 或確認 Hermes 安裝路徑"
+        "找不到 hermes_cli/commands.py；隔離家目錄不回落到正式安裝。請設定 HERMES_HOME。"
     )
 
 

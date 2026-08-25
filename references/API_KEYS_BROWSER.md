@@ -17,14 +17,17 @@ Linux 範例（與常見 Hermes 設定一致）：
 
 ```text
 google-chrome \
-  --user-data-dir=$HOME/.config/google-chrome-personal \
+  --user-data-dir=$HOME/.config/google-chrome \
+  --remote-debugging-address=127.0.0.1 \
   --remote-debugging-port=9222 \
   --no-first-run --no-default-browser-check
 ```
 
-- macOS／Windows：同樣要「固定使用者資料目錄 + remote debugging port」，路徑依系統調整。
-- `config.yaml` 的 chrome-devtools MCP：`--browserUrl http://127.0.0.1:9222`（或實際埠）。
-- check：CDP `/json/version` 可連；MCP 已掛。
+- **只綁本機回環**。不要 `0.0.0.0`。除錯埠沒有認證，本機其它程式也能接管已登入的瀏覽器。
+- macOS／Windows：同樣要「固定使用者資料目錄 + 只綁本機的 remote debugging port」，路徑依系統調整。
+- `config.yaml` 的 chrome-devtools MCP：釘版套件 + `--browserUrl http://127.0.0.1:9222`（或實際埠）。
+- check：本機 `127.0.0.1` 的 `/json/version` 可連；MCP 已掛。
+- 未配對的對話不得驅使瀏覽器去取金鑰。
 
 使用者首次：用這顆 Chrome **手動 Google 登入一次** Gmail／OpenRouter／Agnes 即可；之後 agent 只 attach，不再叫使用者重複登入（除非 session 過期）。
 

@@ -77,29 +77,31 @@ def _tool_verbs() -> dict[str, str]:
 
 
 def _find_display_py() -> Path:
-    env_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser()
-    candidates: list[Path] = []
-    try:
-        import agent.display as ad  # type: ignore
+    env_home = Path(os.environ.get("HERMES_HOME", Path.home() / ".hermes")).expanduser().resolve()
+    live = (Path.home() / ".hermes").expanduser().resolve()
+    isolated = os.environ.get("HERMES_TW_ISOLATED", "").strip() in ("1", "true", "yes") or env_home != live
+    candidates: list[Path] = [env_home / "hermes-agent" / "agent" / "display.py"]
+    if not isolated:
+        try:
+            import agent.display as ad  # type: ignore
 
-        candidates.append(Path(ad.__file__).resolve())
-    except Exception:
-        pass
-    try:
-        import hermes_cli  # type: ignore
+            candidates.append(Path(ad.__file__).resolve())
+        except Exception:
+            pass
+        try:
+            import hermes_cli  # type: ignore
 
-        root = Path(hermes_cli.__file__).resolve().parent.parent
-        candidates.append(root / "agent" / "display.py")
-    except Exception:
-        pass
-    candidates.extend(
-        [
-            env_home / "hermes-agent" / "agent" / "display.py",
-            Path.home() / ".hermes" / "hermes-agent" / "agent" / "display.py",
-            Path("/opt/hermes/agent/display.py"),
-            Path("/opt/hermes/hermes-agent/agent/display.py"),
-        ]
-    )
+            root = Path(hermes_cli.__file__).resolve().parent.parent
+            candidates.append(root / "agent" / "display.py")
+        except Exception:
+            pass
+        candidates.extend(
+            [
+                live / "hermes-agent" / "agent" / "display.py",
+                Path("/opt/hermes/agent/display.py"),
+                Path("/opt/hermes/hermes-agent/agent/display.py"),
+            ]
+        )
     seen: set[Path] = set()
     for c in candidates:
         try:
@@ -109,10 +111,15 @@ def _find_display_py() -> Path:
         if c in seen:
             continue
         seen.add(c)
+        if isolated:
+            try:
+                c.relative_to(env_home)
+            except Exception:
+                continue
         if c.is_file():
             return c
     raise FileNotFoundError(
-        "找不到 agent/display.py；請設定 HERMES_HOME 或確認 Hermes 安裝路徑"
+        "找不到 agent/display.py；隔離家目錄不回落到正式安裝。請設定 HERMES_HOME。"
     )
 
 

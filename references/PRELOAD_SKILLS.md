@@ -65,13 +65,13 @@ Agnes：寫實／氛圍／插畫感點陣圖。
 | `p5js`（bundled 若有） | Hermes creative | 互動／生成圖 |
 
 check：上述至少 frontend-design + canvas-design 存在（或同名）。  
-apply：Hub `--yes` 安裝；失敗則報告。
+apply：從釘版 `anthropics/skills` 複製；失敗則報告，不回落到未釘的 Hub。
 
 
 ## B5. Superpowers（工作方法）
 
-- 來源：**網路** `git clone https://github.com/obra/superpowers`（apply 自動；可選 vendoring 到 `bundled/superpowers`）
-- apply：clone 後安裝到 `$HERMES_HOME/skills/superpowers/`
+- 來源：**網路** 釘 tag 的 `git clone`（見 `PINNED_SOURCES.md`；可選 vendoring 到 `bundled/superpowers`）
+- apply：核對提交後安裝到 `$HERMES_HOME/skills/superpowers/`
 - **不**依賴作者或其它機器上的本機 skill 目錄
 - 用途：計畫、驗證、少犯錯
 - **不**做 skill 裁剪（一般人太難）；bundled 全留

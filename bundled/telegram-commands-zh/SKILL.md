@@ -12,7 +12,7 @@ python3 ~/.hermes/skills/telegram-commands-zh/apply_patch.py
 # 重啟所有相關 hermes-gateway 後，Telegram 選單才會更新
 ```
 
-路徑會自動尋找 `hermes_cli/commands.py`（`HERMES_HOME`、`~/.hermes/hermes-agent`、套件安裝路徑）。
+路徑只在 `HERMES_HOME`（預設使用者 Hermes 家目錄）底下找 `hermes_cli/commands.py`。若家目錄不是正式安裝，不會回過去改正式檔。
 
 ## 注意
 

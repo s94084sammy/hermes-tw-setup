@@ -16,9 +16,9 @@
 | `telegram-commands-zh` | 倉庫 `bundled/telegram-commands-zh` | 隨包（隨 git 下載） |
 | `tool-progress-zh` | 倉庫 `bundled/tool-progress-zh` | 隨包（改**部署端** display.py） |
 | `agnes-image-generation` | 倉庫 `bundled/agnes-image-generation` | 隨包 |
-| Superpowers | `git clone https://github.com/obra/superpowers` | 網路 |
-| Office docx/xlsx/pptx/pdf | `hermes skills install skills-sh/anthropics/skills/…` | 網路 Hub |
-| frontend-design / canvas-design / algorithmic-art | 同上 Hub | 網路 Hub |
+| Superpowers | 釘 tag `v4.1.1`（提交見 `PINNED_SOURCES.md`） | 網路 git |
+| Office docx/xlsx/pptx/pdf | 釘 `anthropics/skills` 提交，複製對應資料夾 | 網路 git |
+| frontend-design / canvas-design / algorithmic-art | 同上釘版樹 | 網路 git |
 | duckduckgo-search | `hermes skills repair-official …` | 官方 optional |
 | 設定／SOUL／rich_messages／streaming 關 | 本技能 scripts + references | 隨包 |
 
@@ -30,20 +30,20 @@
 | `~/.hermes/hermes-agent/skills/productivity` | 該機器 Hermes 安裝附帶的 productivity（Hub 失敗時備援） |
 | Docker `/opt/hermes/...` | 容器內 Hermes 安裝樹（`--docker` 測試） |
 
-禁止當成必備來源：`~/.grok/skills`、作者 `~/.claude/plugins/cache`、其它 profile 的私有 skill。
+禁止當成必備來源：其它工具的技能快取、其它 profile 的私有 skill。釘版清單見 `PINNED_SOURCES.md`。
 
 ## 離線限制
 
 無網路時：仍可套用 config／SOUL／bundled 兩技能；Hub 與 Superpowers clone 會失敗並在 check 標 NO。
 
-## 驗證乾淨安裝
+## 先在測試目錄套用
+
+指定 `--hermes-home` 時，設定只寫進那個目錄，正在用的安裝維持原樣。
 
 ```bash
-# 新目錄模擬
 git clone https://github.com/s94084sammy/hermes-tw-setup.git /tmp/hts-clean
 export HERMES_HOME=/tmp/hermes-tw-clean-home
 mkdir -p "$HERMES_HOME"
-# 需有最小 config 或先 hermes 初始化
 python3 /tmp/hts-clean/scripts/baseline.py apply --hermes-home "$HERMES_HOME" --yes
 python3 /tmp/hts-clean/scripts/baseline.py check --hermes-home "$HERMES_HOME"
 ```

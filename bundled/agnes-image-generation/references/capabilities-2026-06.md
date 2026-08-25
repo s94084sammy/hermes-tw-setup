@@ -45,5 +45,5 @@
 
 ## 憑證狀態
 
-- `AGNES_API_KEY` 已確認存在於 default / audit / coo / bd 四個 profile 的 `.env`，格式有效。
-- 憑證只放 `.env`；不可寫進 skill 文件、腳本、聊天回覆或 commit。
+- 憑證只放該機器 Hermes 家目錄的 `.env`；不可寫進 skill 文件、腳本、聊天回覆或 commit。
+- 本倉庫不承載、不確認任何人的金鑰是否已存在。
