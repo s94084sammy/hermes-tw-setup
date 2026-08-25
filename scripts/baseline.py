@@ -1310,6 +1310,38 @@ def check_tool_progress_zh(label: str = "host") -> list[Item]:
     ]
 
 
+def check_behavioral_docs() -> list[Item]:
+    """v1.3.0：行為規範文件在位（表格紅線、文案下限、多 agent 規則、視覺 QA／驗證）。"""
+    refs = SKILL_ROOT / "references"
+    docs = [
+        ("WRITING_ZH.md", "對外中文文案下限（WRITING_ZH.md）"),
+        ("MULTI_AGENT_RULES.md", "多 agent 共同規則（MULTI_AGENT_RULES.md）"),
+        ("TELEGRAM_RICH.md", "表格紅線細節（TELEGRAM_RICH.md 2026-08-24）"),
+        ("DELIVERY_QA.md", "視覺 QA 檔位紅線與驗證原則（DELIVERY_QA.md）"),
+    ]
+    items: list[Item] = []
+    for fn, title in docs:
+        path = refs / fn
+        ok = path.exists()
+        extra = ""
+        if fn == "TELEGRAM_RICH.md" and ok and "2026-08-24" not in path.read_text(encoding="utf-8", errors="ignore"):
+            ok = False
+            extra = "缺 2026-08-24 紅線章節"
+        detail = "在位" if ok else (extra or f"缺 {fn}；請升級 repo 到 v1.3.0")
+        items.append(
+            Item(
+                id=f"docs.{fn.replace('.md', '')}",
+                title=title,
+                ok=ok,
+                detail=detail,
+                fixable=True,
+                level="warn",
+                fix_hint=f"升級技能目錄：cd {SKILL_ROOT} && git fetch --tags && git checkout v1.3.0",
+            )
+        )
+    return items
+
+
 def apply_tool_progress_zh() -> list[str]:
     notes: list[str] = []
     candidates = [
@@ -1456,6 +1488,7 @@ def run_check() -> Report:
     r.items.extend(check_superpowers_and_memory(HERMES_HOME, "default"))
     r.items.extend(check_telegram_rich(HERMES_HOME, "default"))
     r.items.extend(check_tool_progress_zh("host"))
+    r.items.extend(check_behavioral_docs())
     if SIDE_HOME.exists():
         r.items.extend(check_profile("side", SIDE_HOME, is_side=True))
         # 副共用技能庫：預裝 skill 以主目錄為準，只再查語音

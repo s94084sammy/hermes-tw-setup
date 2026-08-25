@@ -6,7 +6,7 @@
 [![Release](https://img.shields.io/github/v/release/s94084sammy/hermes-tw-setup?label=release)](https://github.com/s94084sammy/hermes-tw-setup/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**目前最新發行：[`v1.2.0`](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)**
+**目前最新發行：[`v1.3.0`](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.3.0)**
 
 ---
 
@@ -24,15 +24,17 @@
 
 ---
 
-## What's new in v1.2.0
+## What's new in v1.3.0
 
-對齊 [Release v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0)：
+對齊 [Release v1.3.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.3.0)：
 
-- **Telegram 表格穩定**：`rich_messages: true`，並**關閉 streaming**（Hermes v0.20+ 開 streaming 時表格容易被拆成條列）
-- **三層驗證**寫入文件：設定正確 ≠ API 有紀錄 ≠ 使用者目視是格子表（見 `references/TELEGRAM_RICH.md`）
-- **新增** `bundled/tool-progress-zh`：工具進度氣泡繁中（例如「執行程式」「搜尋檔案」）
-- **依賴僅網路**：Superpowers 只從 GitHub clone；文件與腳本不依賴作者本機 skill 路徑
-- **check / apply** 一併檢查 `streaming_off` 與進度繁中是否就緒
+- **Telegram 表格紅線**補齊（2026-08-24 定案）：表前必空行、格內禁粗體／斜體、單格 ≤ 約 20 字、欄數 ≤ 4、每行以 `|` 開頭、逐表自檢
+- **視覺 QA 檔位紅線**（2026-08-10 定案）：最高檔模型、禁抽樣逐張看、機械過關不算通過、斷線重派不豁免（見 `references/DELIVERY_QA.md`）
+- **新增 `references/WRITING_ZH.md`**：對外中文文案下限（中文母語模型加寫、禁寫作術語／中文破折號／AI 排比、溝通三段式）
+- **新增 `references/MULTI_AGENT_RULES.md`**：多 agent 共同規則單一來源、短核＋索引按需載入、每日蒸餾
+- **金鑰與通道管理**（2026-08-23 定案）：金鑰單一來源、變數只增不改名、通道禁混用（SKILL 七之二）
+- **Chrome 分頁衛生**（2026-08-22 定案）：分頁用完必關、任務鎖不關（SKILL 七之三）
+- **工具回報 ≠ 事實**：寄信／發布／寫入後驗證落庫或讀端，才宣稱完成（DELIVERY_QA 第 5 節）
 
 更早版本摘要見下方 [Changelog](#changelog)。
 
@@ -49,11 +51,11 @@
 
 ## Install
 
-建議鎖定 **Latest release**（目前 `v1.2.0`）：
+建議鎖定 **Latest release**（目前 `v1.3.0`）：
 
 ```bash
 # 新裝：釘最新發行 tag
-git clone --branch v1.2.0 \
+git clone --branch v1.3.0 \
   https://github.com/s94084sammy/hermes-tw-setup.git \
   ~/.hermes/skills/hermes-tw-setup
 
@@ -65,7 +67,7 @@ pip install --user pyyaml
 ```bash
 cd ~/.hermes/skills/hermes-tw-setup
 git fetch --tags
-git checkout v1.2.0
+git checkout v1.3.0
 ```
 
 追 main 開發頭也可，但正式部署仍建議用 [Releases](https://github.com/s94084sammy/hermes-tw-setup/releases) 的 **Latest**。
@@ -96,7 +98,10 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 完整操作說明：
 
 - [`references/MANUAL_STEPS.md`](references/MANUAL_STEPS.md) — 開箱與部署步驟
-- [`references/TELEGRAM_RICH.md`](references/TELEGRAM_RICH.md) — 表格／rich／streaming 與三層驗證
+- [`references/TELEGRAM_RICH.md`](references/TELEGRAM_RICH.md) — 表格／rich／streaming 與三層驗證（含 2026-08-24 紅線細節）
+- [`references/WRITING_ZH.md`](references/WRITING_ZH.md) — 對外中文文案下限
+- [`references/DELIVERY_QA.md`](references/DELIVERY_QA.md) — 檔案交付視覺 QA 與「工具回報 ≠ 事實」驗證
+- [`references/MULTI_AGENT_RULES.md`](references/MULTI_AGENT_RULES.md) — 多 agent 共同規則管理
 - [`references/NETWORK_SOURCES.md`](references/NETWORK_SOURCES.md) — 依賴來源（隨包 + 網路 only）
 - [`references/API_KEYS_BROWSER.md`](references/API_KEYS_BROWSER.md) — 以既有瀏覽器工作階段配置 API 金鑰
 - [`SKILL.md`](SKILL.md) — 供 Agent 載入的技能規格
@@ -118,6 +123,7 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 - Telegram 選單繁中；**工具進度氣泡繁中**（執行程式／搜尋檔案…）
 - Telegram：**rich 表格開** + **streaming 關**（v0.20+ 表格才穩）
 - 表格是否「真的成功」採三層：設定 → API → 目視格子
+- **表格紅線**（2026-08-24 定案）：表前必空行、格內禁粗體／斜體、單格 ≤ 約 20 字、欄數 ≤ 4、每行以 `|` 開頭
 - 可選台灣 TTS／STT 語音偏好
 
 ### Search & models
@@ -140,6 +146,14 @@ python3 ~/.hermes/skills/hermes-tw-setup/scripts/baseline.py apply \
 - Chrome DevTools MCP 與固定使用者設定檔之 CDP 連線
 
 行為準則寫入 SOUL／MEMORY 摘要：預設協助完成任務、不臆測意圖、執行前查證現行做法、以實際檔案與輸出為準。
+
+### Writing & rules（v1.3.0）
+
+- **對外中文文案下限**：中文母語模型撰寫／修改／擴寫；禁寫作術語、中文破折號、AI 排比（`references/WRITING_ZH.md`）
+- **金鑰與通道管理**：金鑰單一來源、變數只增不改名、通道禁混用（SKILL 七之二）
+- **Chrome 分頁衛生**：分頁用完必關、任務鎖不關（SKILL 七之三）
+- **多 agent 共同規則**：共同檔單一來源、短核＋索引按需載入、每日蒸餾（`references/MULTI_AGENT_RULES.md`）
+- **驗證原則**：工具回報 ≠ 事實，寄信／發布／寫入後驗證落庫或讀端（`references/DELIVERY_QA.md` 第 5 節）
 
 ---
 
@@ -181,7 +195,10 @@ scripts/baseline.py           check / apply 實作
 bundled/                      隨包附屬技能與補丁（不靠作者本機）
 references/
   MANUAL_STEPS.md             部署手冊
-  TELEGRAM_RICH.md            表格／rich／streaming／三層驗證
+  TELEGRAM_RICH.md            表格／rich／streaming／三層驗證＋紅線細節
+  WRITING_ZH.md               對外中文文案下限
+  DELIVERY_QA.md              檔案交付視覺 QA＋驗證原則
+  MULTI_AGENT_RULES.md        多 agent 共同規則管理
   NETWORK_SOURCES.md          依賴：隨包 + 網路 only
   API_KEYS_BROWSER.md         瀏覽器金鑰流程
   SOUL-TW.md                  行為基線
@@ -210,7 +227,11 @@ README.md
 
 網路優先依賴：不依賴作者本機 skill；來源表寫入 `NETWORK_SOURCES.md`。
 
-### [v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0) — 2026-08-11（**Latest**）
+### [v1.3.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.3.0) — 2026-08-25（**Latest**）
+
+表格紅線細節（2026-08-24 定案）、視覺 QA 檔位紅線、對外中文文案下限（`WRITING_ZH.md`）、多 agent 共同規則（`MULTI_AGENT_RULES.md`）、金鑰與通道管理、Chrome 分頁衛生、工具回報 ≠ 事實驗證原則。
+
+### [v1.2.0](https://github.com/s94084sammy/hermes-tw-setup/releases/tag/v1.2.0) — 2026-08-11
 
 表格穩定（rich 開、streaming 關）、三層驗證、`tool-progress-zh`、網路 only 依賴，以及文件釘 tag 安裝說明。
 

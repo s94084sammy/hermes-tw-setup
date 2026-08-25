@@ -4,7 +4,7 @@ description: >
   台灣 Hermes Agent 通用基線設定。一讀即可檢查或套用：雙 profile（主 default、副 side）、
   共用技能庫、兩個 Telegram bot、台灣時區與繁中、AnySearch 匿名搜尋、主模型訂閱＋OpenRouter
   備援（僅 Hermes 用量前 10）、開機自啟、禁休眠可關螢幕、Chrome DevTools MCP、核心行為 SOUL、
-  Telegram 指令選單與系統訊息繁中。適用 macOS／Windows／Linux。
+  Telegram 指令選單與系統訊息繁中、表格紅線、對外文案下限、多 agent 共同規則。適用 macOS／Windows／Linux。
   觸發：台灣 Hermes 設定、雙 bot、基線安裝、繁中選單、開機自啟、通用設定技能。
 ---
 
@@ -302,6 +302,39 @@ fallback_providers:
 
 - 能做就做；被硬擋時一句話原因＋替代路徑  
 
+## 七之二、金鑰與通道管理（2026-08-23 定案）
+
+多 profile／多 agent 環境下，金鑰最常壞在「複製貼上到處放」與「改名」：
+
+1. **金鑰單一來源**：新介面金鑰只放共用環境檔（`~/.hermes/.env` 一類），**不准複製到各 profile 家目錄或專案環境檔**；需要就引用
+2. **變數只能新增不能改名**：改名＝破壞所有既有消費者；舊名保留、新增別名
+3. **不同業務通道的金鑰禁止混用／覆蓋**：同一把 key 不要拿去打通另一條通道；寫入前先確認目標 `.env` 是該通道的檔
+4. 對話與 log **不貼完整密鑰**；回顯時遮罩
+
+## 七之三、Chrome 分頁衛生（2026-08-22 定案）
+
+常駐 Chrome（CDP）可用，但要控制資源：
+
+- **分頁用完必關**：批次任務開了一堆 tab，用完關掉；有清理腳本就用（如 `chrome-tab-janitor.py` 一類）
+- **任務鎖**：進行中任務先放鎖檔（如 `~/.claude/shared/locks/chrome-company.lock`）；**有鎖不關**
+- 公司／個人瀏覽器分離：公司資源用公司 profile（如 9223），個人用個人 profile（如 9222），不混用
+
+## 七之四、對外中文文案下限（2026-08 定案）
+
+- **對外中文文案一律由中文母語模型撰寫、修改或擴寫**（現階段 DeepSeek V4 Flash；自己不准硬寫、不准自己定稿）
+- 交付物禁寫作術語（起承轉合等）、中文破折號、AI 排比
+- 溝通習慣：結論先講、完整詞句、數字用阿拉伯數字、三段式回報
+- 詳見 `references/WRITING_ZH.md`（含 DeepSeek thinking 實務坑）
+
+## 七之五、多 Agent 共同規則（2026-08 實戰）
+
+跑多個 Hermes profile 的團隊：
+
+- 共同規則**單一來源**（短核＋索引＋正文），個人 MEMORY 只留角色專屬
+- 開工只帶短核＋索引，**按需載入**正文，不整包重讀
+- 使用者說「以後不要再犯」→ 當天寫入記憶，隔日蒸餾進共同檔；不另開第二套檔
+- 詳見 `references/MULTI_AGENT_RULES.md`
+
 ---
 
 
@@ -354,6 +387,10 @@ apply 會：
 13. Office／Agnes 技能；Agnes key 有則 OK、無則印取 key 指令  
 14. Telegram `rich_messages: true` 且 **streaming 關閉**（表格穩定）  
 15. 工具進度標籤繁中（`display.py` 含 `_TOOL_VERBS_ZH_HANT`）  
+16. 表格紅線文件在位（`TELEGRAM_RICH.md` 含 2026-08-24 細節：格內禁粗體、單格 ≤20 字、欄數 ≤4）  
+17. 對外文案下限在位（`WRITING_ZH.md`；SOUL 已含中文母語模型加寫規則）  
+18. 金鑰單一來源與 Chrome 分頁衛生規則已寫入 SOUL（七之二／七之三）  
+19. 多 agent 環境：`MULTI_AGENT_RULES.md` 在位（單 profile 部署可略）  
 
 ---
 
@@ -380,6 +417,7 @@ apply 會：
 - `anysearch-power-use`：進階搜尋（可選）  
 - 官方：`hermes model`、`hermes fallback`、`hermes profile`、`hermes mcp`、`hermes tools`  
 - Superpowers 來源範例：https://github.com/obra/superpowers  
+- 行為規範：`references/WRITING_ZH.md`（對外文案下限）、`references/MULTI_AGENT_RULES.md`（多 agent 共同規則）、`references/DELIVERY_QA.md`（視覺 QA 與驗證）  
 
 
 ## 交付、Telegram 富訊息與品管
